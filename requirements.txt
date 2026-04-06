@@ -1,0 +1,4 @@
+flask[async]
+aiosqlite
+python-dotenv
+werkzeug
