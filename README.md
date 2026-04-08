@@ -2,6 +2,8 @@
 
 An interactive, modern organizational chart visualization tool inspired by Apple's clean aesthetic. Built with a Flask async backend and an `aiosqlite` database.
 
+![Root Folder](assests/main.png)
+
 ## 🚀 Features
 
 - **Expandable Tree View**: Navigate complex hierarchies with smooth, color-coded branch transitions.
