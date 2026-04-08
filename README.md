@@ -1,4 +1,4 @@
-#  Apple Org Chart Web Application
+# Hierarchical Vision Chart Web Application
 
 An interactive, modern organizational chart visualization tool inspired by Apple's clean aesthetic. Built with a Flask async backend and an `aiosqlite` database.
 
