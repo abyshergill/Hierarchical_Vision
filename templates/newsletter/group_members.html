@@ -1,0 +1,49 @@
+{% extends "newsletter/layout.html" %}
+{% block title %}People · {{ group.name }}{% endblock %}
+{% block news_content %}
+<div class="news-wrap">
+  <section class="card">
+    <div class="row-between"><h1>People in {{ group.name }}</h1><a class="btn" href="{{ group.get_absolute_url }}">&larr; Back to group</a></div>
+    <p class="muted small">Manager: {{ group.manager.full_name|default:"none assigned" }}. Admins and the manager always have access.</p>
+  </section>
+
+  <section class="card">
+    <h2>Access requests <span class="muted small">({{ pending|length }})</span></h2>
+    {% for r in pending %}
+    <div class="req-row">
+      <div class="grow"><strong>{{ r.user.full_name }}</strong> <span class="muted small">{{ r.user.employee_id }}{% if r.user.position %} · {{ r.user.position }}{% endif %} · {{ r.created_at|date:"d M Y, H:i" }}</span>
+        {% if r.message %}<div class="muted small">“{{ r.message }}”</div>{% endif %}</div>
+      <form method="post" action="{% url 'newsletter:request_approve' r.pk %}">{% csrf_token %}<button class="btn btn-sm btn-green" type="submit">Approve</button></form>
+      <form method="post" action="{% url 'newsletter:request_reject' r.pk %}">{% csrf_token %}<button class="btn btn-sm btn-red" type="submit">Decline</button></form>
+    </div>
+    {% empty %}<p class="muted">No requests are waiting.</p>{% endfor %}
+  </section>
+
+  <section class="card">
+    <h2>Members <span class="muted small">({{ members|length }})</span></h2>
+    {% for m in members %}
+    <div class="req-row">
+      <div class="grow"><strong>{{ m.user.full_name }}</strong> <span class="muted small">{{ m.user.employee_id }} · since {{ m.created_at|date:"d M Y" }}</span></div>
+      <form method="post" action="{% url 'newsletter:member_remove' group.pk m.user_id %}" class="js-confirm" data-confirm="Remove {{ m.user.full_name }} from this group?">{% csrf_token %}<button class="btn btn-sm" type="submit">Remove</button></form>
+    </div>
+    {% empty %}<p class="muted">Nobody was added yet.</p>{% endfor %}
+  </section>
+
+  <section class="card">
+    <h2>Add people</h2>
+    <form method="post">{% csrf_token %}
+      <div class="row-between">
+        <input type="search" placeholder="Filter by name or ID" data-filter-list="add-list" aria-label="Filter people" style="max-width:320px">
+        <span class="row-gap"><button type="button" class="btn btn-sm" data-pick="all" data-target="add-list">Select shown</button>
+          <button type="button" class="btn btn-sm" data-pick="none" data-target="add-list">Clear</button></span>
+      </div>
+      <div class="pick-list" id="add-list" style="margin:12px 0 16px">
+        {% for p in candidates %}
+        <label class="pick-item"><input type="checkbox" name="people" value="{{ p.pk }}"><span>{{ p.full_name }} <span class="meta">· {{ p.employee_id }}{% if p.position %} · {{ p.position }}{% endif %}</span></span></label>
+        {% empty %}<p class="muted">Everyone already has access.</p>{% endfor %}
+      </div>
+      <button class="btn btn-primary" type="submit">Add selected</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

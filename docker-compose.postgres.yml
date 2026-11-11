@@ -1,0 +1,17 @@
+# Optional: a throw-away local PostgreSQL for trying the switch.
+#   docker compose -f docker-compose.postgres.yml up -d
+# then in .env:  DB_ENGINE=postgres  DB_NAME=hierarchical_vision  DB_USER=hv  DB_PASSWORD=hv-dev-password  DB_HOST=localhost
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hierarchical_vision
+      POSTGRES_USER: hv
+      POSTGRES_PASSWORD: hv-dev-password
+    ports:
+      - "127.0.0.1:5432:5432"      # bound to localhost only
+    volumes:
+      - hv_pgdata:/var/lib/postgresql/data
+volumes:
+  hv_pgdata:

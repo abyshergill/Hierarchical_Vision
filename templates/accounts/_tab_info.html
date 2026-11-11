@@ -1,0 +1,25 @@
+<section class="card">
+  <h2>User information</h2>
+  <dl class="info-grid">
+    <dt>Full name</dt><dd>{{ target.full_name }}</dd>
+    <dt>Employee ID</dt><dd>{{ target.employee_id }}</dd>
+    <dt>Email address</dt><dd><a href="mailto:{{ target.email }}">{{ target.email }}</a></dd>
+    <dt>Contact information</dt><dd>{{ target.contact_info|default:"—" }}</dd>
+    <dt>Position</dt><dd>{{ target.position|default:"—" }}</dd>
+    <dt>Peer / Reporting manager</dt>
+    <dd>{% if target.manager %}<a href="{{ target.manager.get_absolute_url }}">{{ target.manager.full_name }}</a> <span class="muted">({{ target.manager.employee_id }})</span>{% else %}—{% endif %}</dd>
+    <dt>Description</dt><dd>{{ target.description|default:"—"|linebreaksbr }}</dd>
+    <dt>Profile picture</dt><dd>{% if target.profile_picture %}Uploaded{% else %}Not set{% endif %}</dd>
+    <dt>Background image</dt><dd>{% if target.background_image %}Uploaded{% else %}Not set{% endif %}</dd>
+  </dl>
+  {% if chain %}
+    <h3>Chain of command</h3>
+    <p class="chain">{% for m in chain %}<a href="{{ m.get_absolute_url }}">{{ m.full_name }}</a>{% if not forloop.last %} &rsaquo; {% endif %}{% endfor %}</p>
+  {% endif %}
+</section>
+{% if direct_reports %}
+<section class="card">
+  <h2>Direct reports ({{ direct_reports|length }})</h2>
+  <div class="card-grid">{% for person in direct_reports %}{% include "accounts/_user_card.html" %}{% endfor %}</div>
+</section>
+{% endif %}

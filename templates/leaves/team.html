@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Team leaves{% endblock %}
+{% block content %}
+<h1>Team leaves · {{ year }}</h1>
+
+<section class="card">
+  <h2>Pending approvals ({{ pending|length }})</h2>
+  {% if pending %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Employee</th><th>Type</th><th>Period</th><th class="num">Duration</th><th>Reason</th><th>Decision</th></tr></thead>
+    <tbody>{% for app in pending %}
+      <tr>
+        <td><a href="{{ app.applicant.get_absolute_url }}?tab=leaves">{{ app.applicant.full_name }}</a><div class="muted small">{{ app.applicant.employee_id }}</div></td>
+        <td>{{ app.leave_type.name }}{% if app.is_hourly %} <span class="pill pill-soon">partial</span>{% endif %}</td>
+        <td>{{ app.period_display }}{% if app.day_summary %}
+          <details class="day-details"><summary>{{ app.days.all|length }} day{{ app.days.all|length|pluralize }}</summary>
+            <ul class="plain small">{% for line in app.day_summary %}<li>{{ line }}</li>{% endfor %}</ul></details>{% endif %}</td>
+        <td class="num">{{ app.total_hours }} h <span class="muted">({{ app.total_days }} d)</span></td>
+        <td>{{ app.reason|truncatechars:80 }}</td>
+        <td>{% include "partials/_review_form.html" with next=request.get_full_path %}</td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">Nothing waiting for your review. 🎉</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Team balances (remaining days)</h2>
+  {% if team_rows %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Employee</th>{% for lt in leave_types %}<th class="num">{{ lt.name }}</th>{% endfor %}<th>Export</th></tr></thead>
+    <tbody>{% for member, rows in team_rows %}
+      <tr>
+        <td><a href="{{ member.get_absolute_url }}">{{ member.full_name }}</a><div class="muted small">{{ member.position|default:"—" }} · {{ member.employee_id }}</div></td>
+        {% for b in rows %}<td class="num">{{ b.remaining_days }}{% if b.pending_days %} <span class="muted small">(−{{ b.pending_days }} pending)</span>{% endif %}</td>{% endfor %}
+        <td><a class="btn btn-sm" href="{% url 'leaves:employee_download' member.employee_id %}?year={{ year }}">&#8681; CSV</a></td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">No one reports to you yet.</p>{% endif %}
+</section>
+
+<div class="two-col">
+  <section class="card">
+    <h2>Upcoming approved leaves</h2>
+    {% for app in upcoming %}
+      <p><strong>{{ app.applicant.full_name }}</strong> — {{ app.leave_type.name }}<br><span class="muted">{{ app.period_display }} · {{ app.total_hours }} h</span></p>
+    {% empty %}<p class="muted">None scheduled.</p>{% endfor %}
+  </section>
+  <section class="card">
+    <h2>Upcoming holidays</h2>
+    {% for h in holidays %}<p><strong>{{ h.date|date:"D, d M Y" }}</strong> — {{ h.name }}</p>{% empty %}<p class="muted">None scheduled.</p>{% endfor %}
+    <a href="{% url 'leaves:holidays' %}">Full schedule &rarr;</a>
+  </section>
+</div>
+{% endblock %}

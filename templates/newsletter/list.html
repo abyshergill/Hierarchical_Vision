@@ -1,0 +1,18 @@
+{% extends "newsletter/layout.html" %}
+{% block title %}{% if group %}{{ group.name }}{% else %}Newsletter{% endif %}{% endblock %}
+{% block news_content %}
+<div class="news-wrap">
+  <div class="row-between">
+    <h1>Company newsletter</h1>
+    {% if user.can_publish_newsletter %}<a class="btn btn-primary" href="{% url 'newsletter:create' %}">+ New post</a>{% endif %}
+  </div>
+  <p class="muted">What is happening around the company.{% if single %} {% if group %}<a href="{{ group.get_absolute_url }}">&larr; {{ group.name }}</a>{% else %}<a href="{% url 'newsletter:list' %}">&larr; All posts</a>{% endif %}{% endif %}</p>
+
+  {% for post in posts %}{% include "newsletter/_post.html" %}
+  {% empty %}
+    <div class="card empty-state"><span class="big-icon">&#128240;</span>Nothing has been published yet.</div>
+  {% endfor %}
+
+  {% include "newsletter/_pager.html" %}
+</div>
+{% endblock %}

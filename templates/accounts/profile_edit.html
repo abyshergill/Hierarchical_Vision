@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Edit profile{% endblock %}
+{% block content %}
+<header class="pe-head">
+  <h1>Edit my profile</h1>
+  <p class="muted">Change your contact information, description, profile picture and background image. Everything else is managed by an Admin.</p>
+</header>
+
+<div class="pe-grid">
+  <form id="profile-form" class="card pe-form" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <fieldset class="pe-section">
+      <legend>About you</legend>
+      {% include "partials/_field.html" with field=form.contact_info %}
+      {% include "partials/_field.html" with field=form.description %}
+      <p class="muted small char-count"><span id="desc-count">0</span> / 2000</p>
+    </fieldset>
+
+    <fieldset class="pe-section">
+      <legend>Profile picture</legend>
+      <div class="field upload-field{% if form.profile_picture.errors %} has-error{% endif %}" data-upload="profile_picture">
+        <label for="{{ form.profile_picture.id_for_label }}" class="sr-only">Choose a profile picture</label>
+        {{ form.profile_picture }}
+        <small>JPG, JPEG or PNG &middot; up to 20 MB. A square picture works best.</small>
+        <p class="error js-upload-error" role="alert" hidden></p>
+        {% for e in form.profile_picture.errors %}<p class="error">{{ e }}</p>{% endfor %}
+        <p class="muted small js-upload-meta" hidden></p>
+        <div class="row-gap">
+          <button type="button" class="btn btn-sm js-upload-reset" hidden>Undo selection</button>
+          {% if user.profile_picture %}<label class="check-inline"><input type="checkbox" name="remove_profile_picture" id="id_remove_profile_picture" data-remove-for="profile_picture"> {{ form.remove_profile_picture.label }}</label>{% endif %}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="pe-section">
+      <legend>Background image</legend>
+      <div class="field upload-field{% if form.background_image.errors %} has-error{% endif %}" data-upload="background_image">
+        <label for="{{ form.background_image.id_for_label }}" class="sr-only">Choose a background image</label>
+        {{ form.background_image }}
+        <small>JPG, JPEG or PNG &middot; up to 20 MB. A wide picture (about 3:1) works best.</small>
+        <p class="error js-upload-error" role="alert" hidden></p>
+        {% for e in form.background_image.errors %}<p class="error">{{ e }}</p>{% endfor %}
+        <p class="muted small js-upload-meta" hidden></p>
+        <div class="row-gap">
+          <button type="button" class="btn btn-sm js-upload-reset" hidden>Undo selection</button>
+          {% if user.background_image %}<label class="check-inline"><input type="checkbox" name="remove_background_image" id="id_remove_background_image" data-remove-for="background_image"> {{ form.remove_background_image.label }}</label>{% endif %}
+        </div>
+      </div>
+    </fieldset>
+
+    <p class="muted small">&#128274; Uploaded pictures are checked on the server, re-saved without hidden data (camera, GPS) and stored under a random name.</p>
+    <div class="row-gap"><button class="btn btn-primary" type="submit">Save changes</button><a class="btn" href="{{ user.get_absolute_url }}">Cancel</a></div>
+  </form>
+
+  <aside class="pe-preview" aria-labelledby="pv-title">
+    <p class="eyebrow" id="pv-title">LIVE PREVIEW</p>
+    <section class="card no-pad pv-card">
+      <div class="cover pv-cover">
+        <img id="preview-background_image" class="pv-cover-img" alt="Background image preview" {% if user.background_image %}src="{{ user.background_image.url }}"{% else %}hidden{% endif %}>
+      </div>
+      <div class="pv-body">
+        <div class="pv-avatar">
+          <img id="preview-profile_picture" class="avatar xl" alt="Profile picture preview" data-fallback="pv-initials" {% if user.profile_picture %}src="{{ user.profile_picture.url }}"{% else %}hidden{% endif %}>
+          <span id="pv-initials" class="avatar avatar-initials xl" {% if user.profile_picture %}hidden{% endif %}>{{ user.initials }}</span>
+        </div>
+        <h2>{{ user.full_name }}</h2>
+        <p class="muted">{{ user.position|default:"No position set" }} &middot; {{ user.employee_id }}</p>
+        <p class="pv-contact" id="pv-contact"></p>
+        <p class="pv-desc" id="pv-desc"></p>
+      </div>
+    </section>
+    <p class="muted small">This is how your profile will look. Nothing is saved until you press <strong>Save changes</strong>.</p>
+  </aside>
+</div>
+{% endblock %}

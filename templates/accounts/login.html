@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Sign in · Hierarchical Vision{% endblock %}
+{% block content %}
+<div class="auth-card card">
+  <h1>Sign in</h1>
+  <p class="muted">Use your Employee ID (or email) and password.</p>
+  <form method="post">
+    {% csrf_token %}
+    {% for e in form.non_field_errors %}<div class="flash flash-error">{{ e }}</div>{% endfor %}
+    {% include "partials/_field.html" with field=form.username %}
+    {% include "partials/_field.html" with field=form.password %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+  </form>
+</div>
+{% endblock %}

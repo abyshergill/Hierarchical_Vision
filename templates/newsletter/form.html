@@ -1,0 +1,50 @@
+{% extends "newsletter/layout.html" %}
+{% block title %}{% if post %}Edit post{% else %}New post{% endif %}{% endblock %}
+{% block news_content %}
+<header class="pe-head">
+  <p class="eyebrow">{% if group %}{{ group.name|upper }}{% else %}COMPANY NEWSLETTER{% endif %}</p>
+  <h1>{% if post %}Edit post{% else %}New post{% endif %}</h1>
+  {% if group %}<p class="muted small">&#128274; Private group &mdash; only approved members can see this post.</p>{% endif %}
+</header>
+
+<section class="card">
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {{ form.non_field_errors }}
+    {% include "partials/_field.html" with field=form.title %}
+    {% include "partials/_field.html" with field=form.body %}
+
+    {% if post and post.images.all %}
+    <div class="field">
+      <label>Current pictures <span class="muted small">(tick to remove)</span></label>
+      <div class="cur-grid">
+        {% for img in post.images.all %}
+        <label class="cur-item"><img src="{{ img.image.url }}" alt="Picture {{ forloop.counter }}"><span class="cur-remove"><input type="checkbox" name="remove_images" value="{{ img.pk }}"> Remove</span></label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="field upload-field{% if form.images.errors %} has-error{% endif %}" data-upload="images">
+      <label for="{{ form.images.id_for_label }}">Add pictures <span class="muted small">(optional)</span></label>
+      <div class="dropzone">
+        {{ form.images }}
+        <div class="dz-body">
+          <span class="dz-icon" aria-hidden="true">&#128247;</span>
+          <strong>Drag &amp; drop pictures here</strong>
+          <span class="muted">or <u>click to browse</u></span>
+          <span class="dz-chips"><span>JPG</span><span>JPEG</span><span>PNG</span><span>max {{ form.max_mb }} MB each</span><span>up to {{ form.max_images }}</span></span>
+        </div>
+      </div>
+      <p class="muted small js-upload-count" aria-live="polite"></p>
+      <p class="error js-upload-error" role="alert" hidden></p>
+      {% for e in form.images.errors %}<p class="error">{{ e }}</p>{% endfor %}
+      <div class="preview-grid js-preview-grid" aria-live="polite"></div>
+    </div>
+
+    {% if form.is_pinned %}{% include "partials/_field.html" with field=form.is_pinned %}{% endif %}
+    {% if form.notify_everyone and not post %}{% include "partials/_field.html" with field=form.notify_everyone %}{% endif %}
+    <div class="row-gap"><button class="btn btn-primary" type="submit">{% if post %}Save changes{% else %}Publish{% endif %}</button>
+      <a class="btn" href="{% if group %}{{ group.get_absolute_url }}{% else %}{% url 'newsletter:list' %}{% endif %}">Cancel</a></div>
+  </form>
+</section>
+{% endblock %}

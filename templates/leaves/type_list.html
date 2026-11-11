@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Standard leaves{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row-between"><h1>Standard leaves</h1><div class="row-gap"><a class="btn" href="{% url 'leaves:policy' %}">Daily limit: {{ policy.max_hours_per_day }} h</a><a class="btn btn-primary" href="{% url 'leaves:type_create' %}">+ New standard leave</a></div></div>
+  <p class="muted">Company-wide leave policies that managers and employees can consume.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Code</th><th class="num">Days / year</th><th class="num">Max h / day</th><th>Partial days</th><th>Status</th><th></th></tr></thead>
+    <tbody>{% for t in types %}
+      <tr><td><strong>{{ t.name }}</strong><div class="muted small">{{ t.description|truncatechars:90 }}</div></td><td>{{ t.code }}</td>
+        <td class="num">{{ t.annual_quota_days }}</td><td class="num">{% if t.max_hours_per_day %}{{ t.max_hours_per_day }}{% else %}<span class="muted">{{ policy.max_hours_per_day }} (policy)</span>{% endif %}</td><td>{% if t.allow_hourly %}Yes{% else %}No{% endif %}</td>
+        <td>{% if t.is_active %}Active{% else %}<span class="muted">Inactive</span>{% endif %}</td>
+        <td><a class="btn btn-sm" href="{% url 'leaves:type_edit' t.pk %}">Edit</a></td></tr>
+    {% empty %}<tr><td colspan="7" class="muted">No standard leaves yet.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

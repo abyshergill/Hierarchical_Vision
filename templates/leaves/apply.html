@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Apply for leave{% endblock %}
+{% block content %}
+<div class="two-col">
+  <section class="card">
+    <p class="eyebrow">TIME OFF</p><h1>Apply for leave</h1>
+    <p class="muted">Choose your dates and enter the time for each working day. A reason is required.</p>
+    <form method="post" id="leave-form"
+          data-type-limits="{{ type_limits }}" data-hourly-types="{{ hourly_types }}"
+          data-weekdays="{{ weekdays }}" data-holidays="{{ holiday_list }}"
+          data-default-start="{{ policy.default_start_time|time:'H:i' }}" data-default-limit="{{ policy.max_hours_per_day }}">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="flash flash-error">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+      {% include "partials/_field.html" with field=form.leave_type %}
+      <div class="grid-2">
+        {% include "partials/_field.html" with field=form.start_date %}
+        {% include "partials/_field.html" with field=form.end_date %}
+      </div>
+
+      <div class="day-planner" id="day-planner">
+        <div class="row-between">
+          <h2>Time for each day</h2>
+          <div class="row-gap">
+            <button type="button" class="btn btn-sm" id="fill-full">Full day for all</button>
+            <button type="button" class="btn btn-sm" id="copy-first">Copy first day to all</button>
+          </div>
+        </div>
+        <p class="muted small" id="limit-note">Pick the dates above, then set the from/to time for every working day.
+          Maximum <strong id="limit-value">{{ policy.max_hours_per_day }}</strong> h per day (set by the admin).</p>
+        <div class="table-wrap">
+          <table class="day-table">
+            <thead><tr><th>Date</th><th>From</th><th>To</th><th class="num">Hours</th></tr></thead>
+            <tbody id="day-rows">
+              {% for r in posted_rows %}
+              <tr data-date="{{ r.date }}">
+                <td>{{ r.date }}<input type="hidden" name="day_date" value="{{ r.date }}"></td>
+                <td><input type="time" name="day_start" value="{{ r.start }}" step="900" required></td>
+                <td><input type="time" name="day_end" value="{{ r.end }}" step="900" required></td>
+                <td class="num"><span class="day-hours"></span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="muted small" id="day-empty" {% if posted_rows %}hidden{% endif %}>No working days selected yet. Weekends and public holidays are skipped automatically.</p>
+        <p class="muted small" id="day-total" hidden></p>
+      </div>
+
+      {% include "partials/_field.html" with field=form.reason %}
+      <div class="row-gap"><button class="btn btn-primary" type="submit">Submit request</button><a class="btn" href="{% url 'accounts:my_profile' %}?tab=leaves">Cancel</a></div>
+    </form>
+  </section>
+  <aside class="card">
+    <h2>Your balances</h2>
+    <ul class="plain">{% for b in balances %}
+      <li><strong>{{ b.leave_type.name }}</strong><br><span class="muted">{{ b.remaining_days }} d ({{ b.remaining_hours }} h) remaining · {{ b.pending_days }} d pending</span></li>
+    {% endfor %}</ul>
+    <p class="muted small">Daily limit: <strong>{{ policy.max_hours_per_day }} h</strong>. Leave types may have their own limit.
+      Weekends and public holidays are not deducted. Your manager is notified automatically.</p>
+  </aside>
+</div>
+{% endblock %}

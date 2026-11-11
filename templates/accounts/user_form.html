@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{% if creating %}New user{% else %}Edit {{ object.full_name }}{% endif %}{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>{% if creating %}Create user{% else %}Edit {{ object.full_name }}{% endif %}</h1>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}{% include "partials/_field.html" %}
+    {% if field.name == "profile_picture" %}<div class="upload-preview"><p class="muted small">Profile picture preview</p><img id="preview-profile_picture" class="avatar xl" alt="Selected profile picture preview" {% if object.profile_picture %}src="{{ object.profile_picture.url }}"{% else %}hidden{% endif %}></div>{% endif %}
+    {% if field.name == "background_image" %}<div class="upload-preview"><p class="muted small">Background preview</p><img id="preview-background_image" class="cover-preview" alt="Selected background image preview" {% if object.background_image %}src="{{ object.background_image.url }}"{% else %}hidden{% endif %}></div>{% endif %}
+    {% endfor %}
+    <div class="row-gap"><button class="btn btn-primary" type="submit">Save</button><a class="btn" href="{% url 'accounts:user_list' %}">Cancel</a></div>
+  </form>
+</section>
+{% endblock %}

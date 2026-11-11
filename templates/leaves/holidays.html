@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Holidays {{ year }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row-between"><h1>Holiday schedule · {{ year }}</h1>
+    <div class="row-gap"><a class="btn btn-sm" href="?year={{ year|add:'-1' }}">&lsaquo; {{ year|add:'-1' }}</a><a class="btn btn-sm" href="?year={{ year|add:'1' }}">{{ year|add:'1' }} &rsaquo;</a>
+      <a class="btn btn-sm btn-primary" href="{% url 'leaves:holidays_pdf' %}?year={{ year }}" download>&#11015; Download PDF</a></div></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Holiday</th><th>Notes</th>{% if user.is_admin %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for h in holidays %}
+      <tr><td>{{ h.date|date:"D, d M Y" }}</td><td>{{ h.name }}</td><td>{{ h.description }}</td>
+        {% if user.is_admin %}<td><form method="post" action="{% url 'leaves:holiday_delete' h.pk %}">{% csrf_token %}<button class="btn btn-sm btn-red">Delete</button></form></td>{% endif %}</tr>
+    {% empty %}<tr><td colspan="4" class="muted">No holidays published for {{ year }}.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% if form %}
+<section class="card narrow">
+  <h2>Add holiday</h2>
+  <form method="post">{% csrf_token %}
+    {% for field in form %}{% include "partials/_field.html" %}{% endfor %}
+    <button class="btn btn-primary">Add</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

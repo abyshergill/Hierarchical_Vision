@@ -1,0 +1,16 @@
+<li class="org-node" style="--branch: {{ node.color }}">
+  <div class="org-card">
+    {% include "partials/_avatar.html" with person=node.user size="md" %}
+    <div class="org-info">
+      <a href="{{ node.user.get_absolute_url }}"><strong>{{ node.user.full_name }}</strong></a>
+      <span>{{ node.user.position|default:"—" }}</span>
+      <span class="muted small">{{ node.user.employee_id }}</span>
+    </div>
+    {% if node.children %}<button type="button" class="org-toggle" aria-expanded="true" title="Show / hide {{ node.children|length }} direct report{{ node.children|length|pluralize }}">&#9662; {{ node.children|length }}</button>{% endif %}
+  </div>
+  {% if node.children %}
+  <ul class="org-children">
+    {% for child in node.children %}{% include "accounts/_org_node.html" with node=child %}{% endfor %}
+  </ul>
+  {% endif %}
+</li>

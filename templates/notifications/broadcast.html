@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Send notification{% endblock %}
+{% block content %}
+<div class="two-col">
+  <section class="card">
+    <h1>Send notification</h1>
+    <p class="muted">Appears in the recipients' bell straight away. Use sparingly: it reaches people immediately.</p>
+    <form method="post" id="broadcast-form">{% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="field{% if form.audience.errors %} has-error{% endif %}">
+        <label>Send to</label>
+        <ul class="choice-list">{% for radio in form.audience %}<li><label for="{{ radio.id_for_label }}">{{ radio.tag }} {{ radio.choice_label }}</label></li>{% endfor %}</ul>
+        {% for e in form.audience.errors %}<p class="error">{{ e }}</p>{% endfor %}
+      </div>
+      <div class="field{% if form.recipients.errors %} has-error{% endif %}" id="people-picker">
+        <div class="row-between"><label>Choose people</label>
+          <span class="row-gap"><button type="button" class="btn btn-sm" data-pick="all" data-target="recipient-list">Select shown</button>
+          <button type="button" class="btn btn-sm" data-pick="none" data-target="recipient-list">Clear</button></span></div>
+        <input type="search" placeholder="Filter by name or ID" data-filter-list="recipient-list" aria-label="Filter people" style="margin-bottom:8px">
+        <div class="pick-list" id="recipient-list">
+          {% for box in form.recipients %}
+            <label class="pick-item" for="{{ box.id_for_label }}">{{ box.tag }} <span>{{ box.choice_label }}</span></label>
+          {% endfor %}
+        </div>
+        {% for e in form.recipients.errors %}<p class="error">{{ e }}</p>{% endfor %}
+      </div>
+      {% include "partials/_field.html" with field=form.title %}
+      {% include "partials/_field.html" with field=form.message %}
+      {% include "partials/_field.html" with field=form.url %}
+      {% include "partials/_field.html" with field=form.send_email %}
+      <button class="btn btn-primary" type="submit">Send notification</button>
+    </form>
+  </section>
+  <aside class="card">
+    <h2>Recently sent</h2>
+    {% for b in recent %}
+      <p><strong>{{ b.title }}</strong><br><span class="muted small">{{ b.get_audience_display }} · {{ b.recipient_count }} account{{ b.recipient_count|pluralize }}{% if b.emailed %} · e-mailed{% endif %}<br>
+        {{ b.created_at|date:"d M Y H:i" }} by {{ b.sent_by.full_name|default:"—" }}</span></p>
+    {% empty %}<p class="muted">Nothing sent yet.</p>{% endfor %}
+  </aside>
+</div>
+{% endblock %}

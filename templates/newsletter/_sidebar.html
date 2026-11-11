@@ -1,0 +1,43 @@
+<aside class="news-side" aria-label="Newsletter sidebar">
+  <section class="side-sec" aria-labelledby="side-groups">
+    <div class="row-between side-head">
+      <h2 id="side-groups">Groups</h2>
+      {% if viewer.is_admin %}<a class="btn btn-sm" href="{% url 'newsletter:group_create' %}" title="Create a department group">+ New</a>{% endif %}
+    </div>
+    {% if not signed_in %}
+      <p class="muted small"><a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}">Sign in</a> to see department groups.</p>
+    {% else %}
+      <ul class="side-list">
+        {% for g in groups %}
+        <li>
+          <a class="side-link" href="{{ g.get_absolute_url }}">
+            <span class="side-icon" aria-hidden="true">{% if g.state %}&#128101;{% else %}&#128274;{% endif %}</span>
+            <span class="side-text"><strong>{{ g.name }}</strong>{% if g.manager %}<span class="muted small">Manager: {{ g.manager.full_name }}</span>{% endif %}</span>
+          </a>
+          {% if g.state == "manager" %}<span class="pill pill-approved">Manager</span>
+          {% elif g.state == "member" %}<span class="pill pill-approved">Member</span>
+          {% elif g.state == "pending" %}<span class="pill pill-pending">Pending</span>
+          {% else %}<span class="pill">Request</span>{% endif %}
+        </li>
+        {% empty %}<li class="side-empty muted small">No groups yet.{% if viewer.is_admin %} Create the first department group.{% endif %}</li>{% endfor %}
+      </ul>
+      <p class="side-foot small"><a href="{% url 'newsletter:group_list' %}">All groups{% if more_groups %} (+{{ more_groups }} more){% endif %} &rsaquo;</a></p>
+    {% endif %}
+  </section>
+
+  <hr class="side-divider">
+
+  <section class="side-sec" aria-labelledby="side-pinned">
+    <div class="side-head"><h2 id="side-pinned">&#128204; Pinned</h2></div>
+    <ul class="side-list">
+      {% for p in pinned %}
+      <li>
+        <a class="side-link" href="{{ p.get_absolute_url }}">
+          <span class="side-text"><strong>{{ p.title }}</strong>
+            <span class="muted small">{% if p.group %}{{ p.group.name }}{% else %}Company{% endif %} &middot; {{ p.created_at|date:"d M Y" }}</span></span>
+        </a>
+      </li>
+      {% empty %}<li class="side-empty muted small">Nothing is pinned.</li>{% endfor %}
+    </ul>
+  </section>
+</aside>

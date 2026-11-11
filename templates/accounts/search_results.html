@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ q }} · Search{% endblock %}
+{% block content %}
+<div class="search-top">{% include "accounts/_searchbox.html" with q=q %}</div>
+{% if not q %}
+  <p class="muted center">Type a name or Employee ID to search.</p>
+{% elif results %}
+  <p class="muted">{{ results|length }} result{{ results|length|pluralize }} for “{{ q }}”</p>
+  <div class="card-grid">
+    {% for person in results %}{% include "accounts/_user_card.html" %}{% endfor %}
+  </div>
+{% else %}
+  <div class="card center"><h2>No employees found</h2><p class="muted">Nothing matched “{{ q }}”. Try a partial name or another ID.</p></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "newsletter/layout.html" %}
+{% block title %}Newsletter publishers{% endblock %}
+{% block news_content %}
+<section class="card narrow">
+  <h1>Newsletter publishers</h1>
+  <p class="muted">Everybody can <em>read</em> the newsletter. Tick the managers and employees who may also <em>publish</em> to it.
+    They can edit or delete only their own posts. Admins can always publish and manage every post.</p>
+  <form method="post">{% csrf_token %}
+    <div class="row-between">
+      <input type="search" placeholder="Filter by name or ID" data-filter-list="publisher-list" aria-label="Filter people" style="max-width:320px">
+      <span class="row-gap"><button type="button" class="btn btn-sm" data-pick="all" data-target="publisher-list">Select shown</button>
+        <button type="button" class="btn btn-sm" data-pick="none" data-target="publisher-list">Clear</button></span>
+    </div>
+    <div class="pick-list" id="publisher-list" style="margin:12px 0 16px">
+      {% for p in people %}
+        <label class="pick-item"><input type="checkbox" name="publishers" value="{{ p.pk }}" {% if p.newsletter_publisher %}checked{% endif %}>
+          <span>{{ p.full_name }} <span class="meta">· {{ p.employee_id }} · {{ p.get_role_display }}</span></span></label>
+      {% empty %}<p class="muted">No managers or employees yet.</p>{% endfor %}
+    </div>
+    <button class="btn btn-primary" type="submit">Save permissions</button>
+  </form>
+</section>
+{% endblock %}

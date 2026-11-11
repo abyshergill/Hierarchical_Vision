@@ -1,0 +1,62 @@
+{% extends "newsletter/layout.html" %}
+{% block title %}{% if group %}Edit group{% else %}New group{% endif %}{% endblock %}
+{% block news_content %}
+<header class="pe-head">
+  <p class="eyebrow">{% if group %}EDIT GROUP{% else %}NEW DEPARTMENT GROUP{% endif %}</p>
+  <h1>{% if group %}{{ group.name }}{% else %}Create a group{% endif %}</h1>
+  <p class="muted">A private space for one department. Only people approved by an Admin or the group manager can read, post and comment.</p>
+</header>
+
+<div class="gf-grid">
+  <form method="post" class="card gf-form" id="group-form">{% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <fieldset class="pe-section">
+      <legend>1 &middot; Group details</legend>
+      {% include "partials/_field.html" with field=form.name %}
+      {% include "partials/_field.html" with field=form.description %}
+      <p class="muted small char-count"><span id="gf-desc-count">0</span> / 300</p>
+    </fieldset>
+
+    <fieldset class="pe-section">
+      <legend>2 &middot; Group manager</legend>
+      {% include "partials/_field.html" with field=form.manager %}
+      <ul class="gf-help">
+        <li>Approves or declines access requests</li>
+        <li>Adds and removes people</li>
+        <li>Pins and moderates posts and comments</li>
+      </ul>
+      <p class="muted small">Admins always have these rights too, so a group works even before a manager is assigned.</p>
+    </fieldset>
+
+    <div class="row-gap">
+      <button class="btn btn-primary" type="submit">{% if group %}Save changes{% else %}Create group{% endif %}</button>
+      <a class="btn" href="{% if group %}{{ group.get_absolute_url }}{% else %}{% url 'newsletter:group_list' %}{% endif %}">Cancel</a>
+    </div>
+  </form>
+
+  <aside class="gf-side" aria-labelledby="gp-title">
+    <p class="eyebrow" id="gp-title">LIVE PREVIEW</p>
+    <article class="card gp-card">
+      <div class="side-link">
+        <span class="side-icon" aria-hidden="true">&#128274;</span>
+        <span class="side-text"><strong id="gp-name">{{ group.name|default:"Group name" }}</strong>
+          <span class="muted small">Manager: <span id="gp-manager">{{ group.manager.full_name|default:"none assigned" }}</span></span></span>
+        <span class="pill">Request</span>
+      </div>
+      <p class="muted gp-desc" id="gp-desc">{{ group.description }}</p>
+    </article>
+    <p class="muted small">This is how the group appears to people without access. Posts stay hidden until they are approved.</p>
+  </aside>
+</div>
+
+{% if group %}
+<section class="card danger-zone">
+  <h2>Delete group</h2>
+  <p class="muted small">Removes the group and every post, picture and comment inside it. This cannot be undone.</p>
+  <form method="post" action="{% url 'newsletter:group_delete' group.pk %}" class="js-confirm" data-confirm="Delete this group with ALL its posts, images and comments? This cannot be undone.">{% csrf_token %}
+    <button class="btn btn-red" type="submit">Delete group</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

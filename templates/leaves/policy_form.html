@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Leave policy{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Leave policy</h1>
+  <p class="muted">Employees set a from/to time for every leave day. They can never book more than the limit below
+    (a leave type can override it in <a href="{% url 'leaves:type_list' %}">Standard leaves</a>).</p>
+  <form method="post">{% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}{% include "partials/_field.html" %}{% endfor %}
+    <div class="row-gap"><button class="btn btn-primary">Save policy</button><a class="btn" href="{% url 'leaves:type_list' %}">Cancel</a></div>
+  </form>
+  {% if policy.updated_by %}<p class="muted small">Last changed by {{ policy.updated_by.full_name }} on {{ policy.updated_at|date:"d M Y H:i" }}.</p>{% endif %}
+</section>
+{% endblock %}

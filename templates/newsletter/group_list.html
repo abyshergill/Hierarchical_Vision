@@ -1,0 +1,23 @@
+{% extends "newsletter/layout.html" %}
+{% block title %}Groups{% endblock %}
+{% block news_content %}
+<div class="news-wrap">
+  <div class="row-between"><h1>Department groups</h1>
+    {% if user.is_admin %}<a class="btn btn-primary" href="{% url 'newsletter:group_create' %}">+ New group</a>{% endif %}</div>
+  <p class="muted">Private spaces for a department. You can read and post only in groups you were approved for &mdash; request access to join others.</p>
+  {% for g in groups %}
+  <article class="card group-row">
+    <div class="grow">
+      <h2><a href="{{ g.get_absolute_url }}">{{ g.name }}</a></h2>
+      {% if g.description %}<p class="muted">{{ g.description }}</p>{% endif %}
+      <p class="muted small">Manager: {{ g.manager.full_name|default:"none assigned" }} · {{ g.member_count }} member{{ g.member_count|pluralize }}</p>
+    </div>
+    <div class="row-gap">
+      {% if g.state == "manager" %}<span class="pill pill-approved">Manager</span>{% elif g.state == "member" %}<span class="pill pill-approved">Member</span>
+      {% elif g.state == "pending" %}<span class="pill pill-pending">Request pending</span>{% else %}<span class="pill">No access</span>{% endif %}
+      <a class="btn btn-sm" href="{{ g.get_absolute_url }}">{% if g.state == "manager" or g.state == "member" %}Open{% elif g.state == "pending" %}View{% else %}Request access{% endif %}</a>
+    </div>
+  </article>
+  {% empty %}<div class="card empty-state"><span class="big-icon">&#128101;</span>No groups yet.</div>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load news_sidebar %}
+{% comment %}Two-column newsletter shell: content on the left, Groups + Pinned sidebar on the right.{% endcomment %}
+{% block container_class %} wide{% endblock %}
+{% block content %}
+<div class="news-layout">
+  <div class="news-main">{% block news_content %}{% endblock %}</div>
+  {% news_sidebar %}
+</div>
+{% endblock %}

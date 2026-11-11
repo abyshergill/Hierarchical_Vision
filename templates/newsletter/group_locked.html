@@ -1,0 +1,22 @@
+{% extends "newsletter/layout.html" %}
+{% block title %}{{ group.name }}{% endblock %}
+{% block news_content %}
+<section class="card locked">
+  <div class="big-icon" aria-hidden="true">&#128274;</div>
+  <p class="eyebrow">PRIVATE GROUP</p>
+  <h1>{{ group.name }}</h1>
+  {% if group.description %}<p class="muted">{{ group.description }}</p>{% endif %}
+  <p class="muted small">Manager: {% if group.manager %}{{ group.manager.full_name }}{% else %}not assigned yet{% endif %}.
+    Posts, pictures and comments are visible only to people approved by an Admin or the group manager.</p>
+  {% if pending %}
+    <div class="flash flash-warning">Your request from {{ pending.created_at|date:"d M Y, H:i" }} is waiting for approval.</div>
+  {% else %}
+    {% if last_rejected %}<div class="flash flash-error">Your last request was declined on {{ last_rejected.decided_at|date:"d M Y" }}. You can ask again.</div>{% endif %}
+    <form method="post" action="{% url 'newsletter:request_access' group.pk %}" class="stack">{% csrf_token %}
+      <div class="field"><label for="req-message">Why do you need access? <span class="muted small">(optional)</span></label>
+        <textarea id="req-message" name="message" rows="3" maxlength="300" placeholder="e.g. I joined the Test Manufacturing team"></textarea></div>
+      <button class="btn btn-primary" type="submit">Request access</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

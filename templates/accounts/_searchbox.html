@@ -1,0 +1,5 @@
+<form class="searchbox" action="{% url 'accounts:search' %}" method="get" role="search" autocomplete="off">
+  <span class="search-icon">&#128269;</span>
+  <input id="search-input" type="search" name="q" value="{{ q }}" placeholder="Search by name or Employee ID" data-suggest-url="{% url 'accounts:api_search' %}" {% if autofocus %}autofocus{% endif %} aria-label="Search employees">
+  <ul id="suggestions" class="suggestions" hidden></ul>
+</form>

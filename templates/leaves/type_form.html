@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Standard leave{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>{% if object %}Edit {{ object.name }}{% else %}New standard leave{% endif %}</h1>
+  <form method="post">{% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}{% include "partials/_field.html" %}{% endfor %}
+    <div class="row-gap"><button class="btn btn-primary">Save</button><a class="btn" href="{% url 'leaves:type_list' %}">Cancel</a></div>
+  </form>
+</section>
+{% endblock %}

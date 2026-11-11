@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}IT support requests{% endblock %}
+{% block content %}
+<div class="support-inbox"><div class="row-between"><div><p class="eyebrow">ADMIN</p><h1>IT support requests</h1><p class="muted">Review requests and update their status.</p></div></div>
+<nav class="filter-tabs" aria-label="Filter support requests"><a href="{% url 'support:inbox' %}" {% if not selected_status %}aria-current="page"{% endif %}>All</a>{% for code,label in statuses %}<a href="?status={{ code }}" {% if selected_status == code %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+{% for ticket in tickets %}<article class="card support-ticket"><div class="row-between"><h2>{{ ticket.subject }}</h2><span class="pill">{{ ticket.get_status_display }}</span></div><p class="muted small">{{ ticket.requester.full_name }} · {{ ticket.requester.employee_id }} · {{ ticket.created_at|date:"d M Y, H:i" }}</p><div class="ticket-body">{{ ticket.description|linebreaksbr }}</div>
+<form method="post" action="{% url 'support:update' ticket.pk %}" class="status-form">{% csrf_token %}<label for="status-{{ ticket.pk }}">Status</label><select name="status" id="status-{{ ticket.pk }}">{% for code,label in statuses %}<option value="{{ code }}" {% if ticket.status == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn btn-primary btn-sm" type="submit">Update</button></form></article>{% empty %}<div class="card empty-state">No requests found.</div>{% endfor %}</div>
+{% endblock %}

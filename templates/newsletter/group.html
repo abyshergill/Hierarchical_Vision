@@ -1,0 +1,28 @@
+{% extends "newsletter/layout.html" %}
+{% block title %}{{ group.name }}{% endblock %}
+{% block news_content %}
+<div class="news-wrap">
+  <section class="card group-head">
+    <div class="row-between">
+      <div>
+        <p class="eyebrow">DEPARTMENT GROUP</p>
+        <h1>{{ group.name }}</h1>
+        {% if group.description %}<p class="muted">{{ group.description }}</p>{% endif %}
+        <p class="muted small">Manager: {% if group.manager %}<a href="{{ group.manager.get_absolute_url }}">{{ group.manager.full_name }}</a>{% else %}none assigned (Admins manage this group){% endif %}
+          · {{ member_count }} member{{ member_count|pluralize }}</p>
+      </div>
+      <div class="row-gap">
+        <a class="btn btn-primary" href="{% url 'newsletter:group_post_create' group.pk %}">+ New post</a>
+        {% if can_manage %}<a class="btn" href="{% url 'newsletter:group_members' group.pk %}">People{% if pending_count %} <span class="badge-inline">{{ pending_count }}</span>{% endif %}</a>{% endif %}
+        {% if user.is_admin %}<a class="btn" href="{% url 'newsletter:group_edit' group.pk %}">Edit group</a>{% endif %}
+      </div>
+    </div>
+  </section>
+
+  {% for post in posts %}{% include "newsletter/_post.html" %}
+  {% empty %}
+    <div class="card empty-state"><span class="big-icon">&#128240;</span>No posts in this group yet. Be the first to share something.</div>
+  {% endfor %}
+  {% include "newsletter/_pager.html" %}
+</div>
+{% endblock %}

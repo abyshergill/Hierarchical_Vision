@@ -1,0 +1,232 @@
+from datetime import timedelta
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse, reverse_lazy
+from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
+from django.views.generic import CreateView, ListView, UpdateView
+
+from accounts.mixins import AdminRequiredMixin
+
+from . import services
+from .export import build_leave_csv_response
+from .pdf import build_holiday_pdf
+from .forms import HolidayForm, LeaveApplicationForm, LeavePolicyForm, LeaveTypeForm
+from .models import Holiday, LeaveApplication, LeavePolicy, LeaveType
+
+Status = LeaveApplication.Status
+
+
+def _safe_next(request, default):
+    target = request.POST.get("next") or request.GET.get("next")
+    if target and url_has_allowed_host_and_scheme(target, allowed_hosts={request.get_host()}):
+        return target
+    return default
+
+
+def _my_leaves_url(user):
+    return reverse("accounts:profile", kwargs={"employee_id": user.employee_id}) + "?tab=leaves"
+
+
+# ----------------------------------------------------------------- employee
+@login_required
+def apply(request):
+    form = LeaveApplicationForm(request.POST or None, user=request.user)
+    if request.method == "POST" and form.is_valid():
+        application = services.submit_application(form.instance, form.cleaned_days)
+        messages.success(
+            request,
+            f"{application.leave_type.name} request submitted: {len(form.cleaned_days)} day(s), {application.total_hours} h.",
+        )
+        return redirect(_my_leaves_url(request.user))
+    today = timezone.localdate()
+    types = list(LeaveType.objects.filter(is_active=True))
+    policy = form.policy
+    return render(request, "leaves/apply.html", {
+        "form": form,
+        "policy": policy,
+        "balances": services.get_balances_for_users([request.user], today.year)[request.user.pk],
+        # data for the per-day table (the server re-validates everything)
+        "type_limits": ",".join(f"{t.pk}:{t.daily_limit(policy)}" for t in types),
+        "hourly_types": ",".join(str(t.pk) for t in types if t.allow_hourly),
+        "weekdays": ",".join(str(d) for d in settings.WORKING_WEEKDAYS),
+        "holiday_list": ",".join(
+            f"{d:%Y-%m-%d}" for d in Holiday.objects.filter(date__gte=today - timedelta(days=400)).values_list("date", flat=True)
+        ),
+        "posted_rows": form.posted_rows,
+    })
+
+
+@login_required
+@require_POST
+def cancel(request, pk):
+    application = get_object_or_404(LeaveApplication, pk=pk)
+    try:
+        services.cancel_application(application, request.user)
+        messages.success(request, "Request cancelled.")
+    except ValidationError as exc:
+        messages.error(request, "; ".join(exc.messages))
+    return redirect(_safe_next(request, _my_leaves_url(request.user)))
+
+
+def _requested_year(request):
+    """?year=YYYY, limited to a sane range so odd values cannot reach the database or the PDF."""
+    default = timezone.localdate().year
+    try:
+        year = int(request.GET.get("year", default))
+    except (TypeError, ValueError):
+        return default
+    return year if 2000 <= year <= 2100 else default
+
+
+@login_required
+def holidays(request):
+    year = _requested_year(request)
+    form = None
+    if request.user.is_admin:
+        form = HolidayForm(request.POST or None)
+        if request.method == "POST" and form.is_valid():
+            form.save()
+            messages.success(request, "Holiday added.")
+            return redirect(f"{reverse('leaves:holidays')}?year={year}")
+    return render(request, "leaves/holidays.html", {
+        "holidays": Holiday.objects.filter(date__year=year), "year": year, "form": form,
+    })
+
+
+@login_required
+def holidays_pdf(request):
+    """Download the holiday schedule of one year as a PDF (any signed-in user, same audience as the page)."""
+    year = _requested_year(request)
+    rows = Holiday.objects.filter(date__year=year).order_by("date").values_list("date", "name", "description")
+    pdf = build_holiday_pdf(year, rows, generated_at=timezone.localtime().replace(tzinfo=None))
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="holidays-{year}.pdf"'
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@login_required
+@require_POST
+def holiday_delete(request, pk):
+    if not request.user.is_admin:
+        raise PermissionDenied
+    get_object_or_404(Holiday, pk=pk).delete()
+    messages.success(request, "Holiday removed.")
+    return redirect("leaves:holidays")
+
+
+# ----------------------------------------------------------------- manager
+@login_required
+def team(request):
+    if not request.user.can_approve_leaves:
+        raise PermissionDenied
+    year = timezone.localdate().year
+    members = list(services.team_members(request.user))
+    pending = (
+        LeaveApplication.objects.filter(applicant__in=members, status=Status.PENDING)
+        
+        .select_related("applicant", "leave_type").prefetch_related("days").order_by("start_date")
+    )
+    pending = [a for a in pending if request.user.can_review(a.applicant)]
+    upcoming = (
+        LeaveApplication.objects.filter(applicant__in=members, status=Status.APPROVED, end_date__gte=timezone.localdate())
+        .select_related("applicant", "leave_type").order_by("start_date")[:30]
+    )
+    balances = services.get_balances_for_users(members, year)
+    return render(request, "leaves/team.html", {
+        "pending": pending,
+        "upcoming": upcoming,
+        "team_rows": [(m, balances[m.pk]) for m in members],
+        "leave_types": LeaveType.objects.filter(is_active=True),
+        "holidays": Holiday.objects.filter(date__gte=timezone.localdate()).order_by("date")[:10],
+        "year": year,
+    })
+
+
+@login_required
+def employee_download(request, employee_id):
+    """Download one employee's leave balances + history as CSV (Managers/Admins only)."""
+    from accounts.models import User
+
+    target = get_object_or_404(User, employee_id__iexact=employee_id, is_active=True)
+    if not request.user.can_export_leaves(target):
+        raise PermissionDenied
+    try:
+        year = int(request.GET.get("year", timezone.localdate().year))
+    except ValueError:
+        year = timezone.localdate().year
+    year = min(max(year, 2000), 2100)
+    return build_leave_csv_response(target, year, request.user)
+
+
+@login_required
+@require_POST
+def review(request, pk):
+    decision = request.POST.get("decision")
+    if decision not in {"approve", "reject"}:
+        raise PermissionDenied
+    try:
+        app = services.review_application(pk, request.user, decision == "approve", request.POST.get("comment", ""))
+        messages.success(request, f"{app.applicant.full_name}'s request was {app.get_status_display().lower()}.")
+    except ValidationError as exc:
+        messages.error(request, "; ".join(exc.messages))
+    except LeaveApplication.DoesNotExist:
+        raise Http404
+    return redirect(_safe_next(request, reverse("leaves:team")))
+
+
+# ----------------------------------------------------------------- admin: standard leaves
+class LeaveTypeListView(AdminRequiredMixin, ListView):
+    model = LeaveType
+    template_name = "leaves/type_list.html"
+    context_object_name = "types"
+
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), "policy": LeavePolicy.load()}
+
+
+@login_required
+def policy_edit(request):
+    """Admin sets the maximum leave hours anyone may book on one day."""
+    if not request.user.is_admin:
+        raise PermissionDenied
+    policy = LeavePolicy.load()
+    form = LeavePolicyForm(request.POST or None, instance=policy)
+    if request.method == "POST" and form.is_valid():
+        policy = form.save(commit=False)
+        policy.updated_by = request.user
+        policy.save()
+        messages.success(request, f"Daily leave limit is now {policy.max_hours_per_day} h.")
+        return redirect("leaves:type_list")
+    return render(request, "leaves/policy_form.html", {"form": form, "policy": policy})
+
+
+class LeaveTypeCreateView(AdminRequiredMixin, CreateView):
+    model = LeaveType
+    form_class = LeaveTypeForm
+    template_name = "leaves/type_form.html"
+    success_url = reverse_lazy("leaves:type_list")
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        messages.success(self.request, "Standard leave created.")
+        return super().form_valid(form)
+
+
+class LeaveTypeUpdateView(AdminRequiredMixin, UpdateView):
+    model = LeaveType
+    form_class = LeaveTypeForm
+    template_name = "leaves/type_form.html"
+    success_url = reverse_lazy("leaves:type_list")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Standard leave updated.")
+        return super().form_valid(form)

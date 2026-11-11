@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Org chart · Hierarchical Vision{% endblock %}
+{% block body_class %}chart-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/org_chart.css' %}">{% endblock %}
+
+{% block main %}
+<div id="org-canvas" class="org-canvas" tabindex="0" aria-label="Organization chart canvas"
+     data-data-url="{% url 'accounts:org_data' %}"
+     data-is-admin="{% if user.is_admin %}1{% else %}0{% endif %}">
+
+  <div id="canvas-content" class="canvas-content"></div>
+
+  <div class="chart-ui chart-search">
+    <span class="chart-search-icon">&#128269;</span>
+    <input type="search" id="chart-search-input" class="search-input" autocomplete="off"
+           placeholder="Search by name or Employee ID..." aria-label="Search the chart">
+  </div>
+
+  <div id="breadcrumbs" class="chart-ui breadcrumbs" hidden></div>
+
+  <div id="search-overlay" class="chart-ui search-results-overlay" hidden>
+    <div class="overlay-head"><h2>Search results</h2><button type="button" id="close-search" class="btn">Close</button></div>
+    <div id="lineage-container" class="lineage-view" hidden><h3>Lineage</h3><div id="lineage-chain" class="lineage-chain"></div></div>
+    <div><h3>Employees</h3><div id="results-grid" class="results-grid"></div></div>
+  </div>
+
+  <div class="chart-ui zoom-controls" role="toolbar" aria-label="Chart controls">
+    <button type="button" id="zoom-in" title="Zoom in (+)">+</button>
+    <span id="zoom-level" class="zoom-level">100%</span>
+    <button type="button" id="zoom-out" title="Zoom out (-)">&minus;</button>
+    <span class="sep"></span>
+    <button type="button" id="fit-view" title="Fit to screen (0)">Fit</button>
+    <button type="button" id="expand-all" title="Expand every branch">Expand all</button>
+    <button type="button" id="collapse-all" title="Collapse every branch">Collapse</button>
+  </div>
+
+  <div class="chart-ui chart-hint">Drag to pan &middot; Scroll / pinch to zoom &middot; Shift+scroll to move sideways &middot; &#9662; expands a team</div>
+  <div id="chart-toast" class="chart-ui chart-toast" hidden role="status"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{% static 'js/org_chart.js' %}"></script>{% endblock %}

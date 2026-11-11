@@ -1,0 +1,9 @@
+<a class="user-card" href="{{ person.get_absolute_url }}">
+  {% include "partials/_avatar.html" with person=person size="lg" %}
+  <div class="user-card-body">
+    <strong>{{ person.full_name }}</strong>
+    <span>{{ person.position|default:"—" }}</span>
+    <span class="muted">{{ person.employee_id }}</span>
+    <span class="role role-{{ person.role }}">{{ person.get_role_display }}</span>
+  </div>
+</a>

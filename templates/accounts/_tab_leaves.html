@@ -1,0 +1,68 @@
+<section class="card">
+  <div class="row-between">
+    <h2>Leave balances · {{ year }}</h2>
+    <div class="row-gap">
+      <a class="btn btn-sm" href="?tab=leaves&year={{ year|add:'-1' }}">&lsaquo; {{ year|add:'-1' }}</a>
+      <a class="btn btn-sm" href="?tab=leaves&year={{ year|add:'1' }}">{{ year|add:'1' }} &rsaquo;</a>
+      {% if can_download %}<a class="btn btn-sm" href="{% url 'leaves:employee_download' target.employee_id %}?year={{ year }}">&#8681; Download {{ year }} (CSV)</a>{% endif %}
+      {% if can_apply %}<a class="btn btn-primary btn-sm" href="{% url 'leaves:apply' %}">Apply for leave</a>{% endif %}
+    </div>
+  </div>
+  {% if balances %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Leave type</th><th class="num">Allocated</th><th class="num">Used</th><th class="num">Pending</th><th class="num">Remaining</th><th></th></tr></thead>
+    <tbody>
+    {% for b in balances %}
+      <tr>
+        <td><strong>{{ b.leave_type.name }}</strong>{% if b.leave_type.allow_hourly %} <span class="pill pill-soon">hourly ok</span>{% endif %}</td>
+        <td class="num">{{ b.allocated_days }} d</td>
+        <td class="num">{{ b.used_days }} d</td>
+        <td class="num">{{ b.pending_days }} d</td>
+        <td class="num"><strong>{{ b.remaining_days }} d</strong> <span class="muted">({{ b.remaining_hours }} h)</span></td>
+        <td class="meter-cell"><div class="meter"><span style="width:{% if b.allocated_hours %}{% widthratio b.used_hours b.allocated_hours 100 %}{% else %}0{% endif %}%"></span></div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">No standard leaves have been defined yet.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Applications &amp; history</h2>
+  {% if applications %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Type</th><th>Period</th><th class="num">Duration</th><th>Status</th><th>Reason / decision</th><th></th></tr></thead>
+    <tbody>
+    {% for app in applications %}
+      <tr>
+        <td>{{ app.leave_type.name }}{% if app.is_hourly %} <span class="pill pill-soon">partial</span>{% endif %}</td>
+        <td>{{ app.period_display }}{% if app.day_summary %}
+          <details class="day-details"><summary>{{ app.days.all|length }} day{{ app.days.all|length|pluralize }}</summary>
+            <ul class="plain small">{% for line in app.day_summary %}<li>{{ line }}</li>{% endfor %}</ul></details>{% endif %}</td>
+        <td class="num">{{ app.total_hours }} h <span class="muted">({{ app.total_days }} d)</span></td>
+        <td>{% include "partials/_status.html" %}</td>
+        <td>{{ app.reason|truncatechars:60 }}
+          {% if app.reviewed_by %}<div class="muted small">{{ app.get_status_display }} by {{ app.reviewed_by.full_name }}{% if app.review_comment %}: “{{ app.review_comment }}”{% endif %}</div>{% endif %}</td>
+        <td class="actions">
+          {% if app.status == "pending" %}
+            {% if can_apply %}
+              <form method="post" action="{% url 'leaves:cancel' app.pk %}">{% csrf_token %}<button class="btn btn-sm">Cancel</button></form>
+            {% elif can_review_target %}
+              {% include "partials/_review_form.html" with next=request.get_full_path %}
+            {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">No leave applications yet.</p>{% endif %}
+</section>
+
+{% if upcoming_holidays %}
+<section class="card">
+  <h2>Upcoming holidays</h2>
+  <ul class="plain">{% for h in upcoming_holidays %}<li><strong>{{ h.date|date:"D, d M Y" }}</strong> — {{ h.name }}</li>{% endfor %}</ul>
+  <a href="{% url 'leaves:holidays' %}">Full holiday schedule &rarr;</a>
+</section>
+{% endif %}

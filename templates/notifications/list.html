@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row-between"><h1>Notifications</h1>
+    <form method="post" action="{% url 'notifications:read_all' %}">{% csrf_token %}<button class="btn btn-sm">Mark all as read</button></form></div>
+  {% for n in page %}
+    <a class="note {% if not n.is_read %}unread{% endif %}" href="{% url 'notifications:open' n.pk %}">
+      <strong>{{ n.title }}</strong>
+      <span>{{ n.message|linebreaksbr }}</span>
+      <time class="muted small">{{ n.created_at|date:"d M Y H:i" }}</time>
+    </a>
+  {% empty %}<p class="muted">You're all caught up.</p>{% endfor %}
+  {% if page.has_other_pages %}<div class="pager">
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">&lsaquo; Newer</a>{% endif %}
+    <span>Page {{ page.number }} / {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Older &rsaquo;</a>{% endif %}</div>{% endif %}
+</section>
+{% endblock %}

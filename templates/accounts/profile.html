@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ target.full_name }} · Profile{% endblock %}
+{% block content %}
+<section class="profile-header card no-pad">
+  <div class="cover" {% if target.background_image %}style="background-image:url('{{ target.background_image.url }}')"{% endif %}></div>
+  <div class="profile-head-row">
+    {% include "partials/_avatar.html" with person=target size="xl" %}
+    <div class="profile-title">
+      <h1>{{ target.full_name }}</h1>
+      <p>{{ target.position|default:"No position set" }} · <span class="muted">{{ target.employee_id }}</span>
+        <span class="role role-{{ target.role }}">{{ target.get_role_display }}</span></p>
+    </div>
+    <div class="profile-actions">
+      {% if can_edit_self %}<a class="btn" href="{% url 'accounts:profile_edit' %}">Edit profile</a>
+        <a class="btn" href="{% url 'accounts:password_change' %}">Change password</a>{% endif %}
+      {% if user.is_admin %}<a class="btn" href="{% url 'accounts:user_edit' target.pk %}">Admin edit</a>{% endif %}
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <a role="tab" class="{% if tab == 'info' %}active{% endif %}" href="?tab=info">User information</a>
+    {% if can_see_private %}<a role="tab" class="{% if tab == 'leaves' %}active{% endif %}" href="?tab=leaves">Leaves</a>{% endif %}
+    {% if can_see_salary %}<a role="tab" class="{% if tab == 'salary' %}active{% endif %}" href="?tab=salary">Salary <span class="pill pill-soon">In progress</span></a>{% endif %}
+  </nav>
+</section>
+
+{% if tab == "info" %}{% include "accounts/_tab_info.html" %}
+{% elif tab == "leaves" %}{% include "accounts/_tab_leaves.html" %}
+{% else %}{% include "accounts/_tab_salary.html" %}{% endif %}
+{% endblock %}
