@@ -165,6 +165,9 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "hr@example.com")
 # Leave-policy knobs
 WORK_HOURS_PER_DAY = 8
 WORKING_WEEKDAYS = (0, 1, 2, 3, 4)  # Monday=0 ... Sunday=6. Use (0..5) for a Mon-Sat week.
+OT_MAX_HOURS_PER_DAY = 12                 # most overtime hours one person may log for one day
+OT_MAX_DAYS_BACK = 31                     # OT can be requested for at most this many days in the past
+OT_MAX_DAYS_AHEAD = 62                    # ... and this many days ahead
 MAX_IMAGE_UPLOAD_MB = 20                  # JPG / JPEG / PNG only (see accounts/sanitize.py)
 NEWSLETTER_MAX_IMAGES = 6                 # per post
 NEWSLETTER_PAGE_SIZE = 8

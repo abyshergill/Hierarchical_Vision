@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -17,8 +17,8 @@ from accounts.mixins import AdminRequiredMixin
 from . import services
 from .export import build_leave_csv_response
 from .pdf import build_holiday_pdf
-from .forms import HolidayForm, LeaveApplicationForm, LeavePolicyForm, LeaveTypeForm
-from .models import Holiday, LeaveApplication, LeavePolicy, LeaveType
+from .forms import HolidayForm, LeaveApplicationForm, LeavePolicyForm, LeaveTypeForm, OvertimeForm
+from .models import Holiday, LeaveApplication, LeavePolicy, LeaveType, OvertimeRequest
 
 Status = LeaveApplication.Status
 
@@ -39,12 +39,16 @@ def _my_leaves_url(user):
 def apply(request):
     form = LeaveApplicationForm(request.POST or None, user=request.user)
     if request.method == "POST" and form.is_valid():
-        application = services.submit_application(form.instance, form.cleaned_days)
-        messages.success(
-            request,
-            f"{application.leave_type.name} request submitted: {len(form.cleaned_days)} day(s), {application.total_hours} h.",
-        )
-        return redirect(_my_leaves_url(request.user))
+        try:
+            application = services.submit_application(form.instance, form.cleaned_days)
+        except ValidationError as exc:
+            form.add_error(None, exc)
+        else:
+            messages.success(
+                request,
+                f"{application.leave_type.name} request submitted: {len(form.cleaned_days)} day(s), {application.total_hours} h.",
+            )
+            return redirect(_my_leaves_url(request.user))
     today = timezone.localdate()
     types = list(LeaveType.objects.filter(is_active=True))
     policy = form.policy
@@ -133,16 +137,22 @@ def team(request):
     pending = (
         LeaveApplication.objects.filter(applicant__in=members, status=Status.PENDING)
         
-        .select_related("applicant", "leave_type").prefetch_related("days").order_by("start_date")
+        .select_related("applicant", "leave_type", "alternate_employee").prefetch_related("days").order_by("start_date")
     )
     pending = [a for a in pending if request.user.can_review(a.applicant)]
+    pending_ot = [
+        o for o in OvertimeRequest.objects.filter(applicant__in=members, status=Status.PENDING)
+        .select_related("applicant").order_by("date", "start_time")
+        if request.user.can_review(o.applicant)
+    ]
     upcoming = (
         LeaveApplication.objects.filter(applicant__in=members, status=Status.APPROVED, end_date__gte=timezone.localdate())
-        .select_related("applicant", "leave_type").order_by("start_date")[:30]
+        .select_related("applicant", "leave_type", "alternate_employee").order_by("start_date")[:30]
     )
     balances = services.get_balances_for_users(members, year)
     return render(request, "leaves/team.html", {
         "pending": pending,
+        "pending_ot": pending_ot,
         "upcoming": upcoming,
         "team_rows": [(m, balances[m.pk]) for m in members],
         "leave_types": LeaveType.objects.filter(is_active=True),
@@ -172,13 +182,62 @@ def employee_download(request, employee_id):
 def review(request, pk):
     decision = request.POST.get("decision")
     if decision not in {"approve", "reject"}:
-        raise PermissionDenied
+        return HttpResponseBadRequest("Invalid decision.")
     try:
         app = services.review_application(pk, request.user, decision == "approve", request.POST.get("comment", ""))
         messages.success(request, f"{app.applicant.full_name}'s request was {app.get_status_display().lower()}.")
     except ValidationError as exc:
         messages.error(request, "; ".join(exc.messages))
     except LeaveApplication.DoesNotExist:
+        raise Http404
+    return redirect(_safe_next(request, reverse("leaves:team")))
+
+
+# ----------------------------------------------------------------- overtime (OT)
+@login_required
+def overtime(request):
+    """Apply for overtime and see your own requests."""
+    form = OvertimeForm(request.POST or None, user=request.user)
+    if request.method == "POST" and form.is_valid():
+        ot = services.submit_overtime(form.instance)
+        messages.success(request, f"Overtime request submitted: {ot.period_display} ({ot.hours} h). Your manager was notified.")
+        return redirect("leaves:overtime")
+    mine = OvertimeRequest.objects.filter(applicant=request.user).select_related("reviewed_by")[:50]
+    year = timezone.localdate().year
+    approved_hours = sum(
+        (o.hours for o in OvertimeRequest.objects.filter(applicant=request.user, status=Status.APPROVED, date__year=year)),
+        0,
+    )
+    return render(request, "leaves/overtime.html", {
+        "form": form, "requests": mine, "approved_hours": approved_hours, "year": year,
+        "max_hours": settings.OT_MAX_HOURS_PER_DAY,
+    })
+
+
+@login_required
+@require_POST
+def overtime_cancel(request, pk):
+    ot = get_object_or_404(OvertimeRequest, pk=pk)
+    try:
+        services.cancel_overtime(ot, request.user)
+        messages.success(request, "Overtime request cancelled.")
+    except ValidationError as exc:
+        messages.error(request, "; ".join(exc.messages))
+    return redirect(_safe_next(request, reverse("leaves:overtime")))
+
+
+@login_required
+@require_POST
+def overtime_review(request, pk):
+    decision = request.POST.get("decision")
+    if decision not in {"approve", "reject"}:
+        return HttpResponseBadRequest("Invalid decision.")
+    try:
+        ot = services.review_overtime(pk, request.user, decision == "approve", request.POST.get("comment", ""))
+        messages.success(request, f"{ot.applicant.full_name}'s overtime was {ot.get_status_display().lower()}.")
+    except ValidationError as exc:
+        messages.error(request, "; ".join(exc.messages))
+    except OvertimeRequest.DoesNotExist:
         raise Http404
     return redirect(_safe_next(request, reverse("leaves:team")))
 

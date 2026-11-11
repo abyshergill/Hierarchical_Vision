@@ -178,3 +178,24 @@ class HomePageTests(BaseCase):
         self.assertContains(self.client.get(reverse("accounts:home")), reverse("notifications:broadcast"))
         self.client.force_login(self.mgr)
         self.assertNotContains(self.client.get(reverse("accounts:home")), reverse("notifications:broadcast"))
+
+
+class LastAdminGuardTests(BaseCase):
+    def _post(self, user, **over):
+        data = {"employee_id": user.employee_id, "full_name": user.full_name, "email": user.email,
+                "role": user.role, "is_active": "on"}
+        data.update(over)
+        data = {k: v for k, v in data.items() if v is not None}
+        return self.client.post(reverse("accounts:user_edit", args=[user.pk]), data)
+
+    def test_sole_admin_cannot_demote_or_deactivate_self(self):
+        self.client.force_login(self.admin)
+        self.assertEqual(self._post(self.admin, role=Role.EMPLOYEE).status_code, 200)
+        self.assertEqual(self._post(self.admin, is_active=None).status_code, 200)
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_admin and self.admin.is_active)
+
+    def test_admin_can_be_demoted_when_another_admin_exists(self):
+        other = make("EMP-002", "Second Admin", Role.ADMIN)
+        self.client.force_login(self.admin)
+        self.assertEqual(self._post(other, role=Role.MANAGER).status_code, 302)

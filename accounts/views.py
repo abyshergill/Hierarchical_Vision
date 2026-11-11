@@ -120,7 +120,8 @@ def profile(request, employee_id):
         ctx.update(
             year=year,
             balances=balances,
-            applications=target.leave_applications.select_related("leave_type", "reviewed_by").prefetch_related("days").order_by("-created_at")[:50],
+            applications=target.leave_applications.select_related("leave_type", "reviewed_by", "alternate_employee").prefetch_related("days").order_by("-created_at")[:50],
+            overtime=target.overtime_requests.select_related("reviewed_by")[:30],
             upcoming_holidays=Holiday.objects.filter(date__gte=timezone.localdate()).order_by("date")[:6],
             can_apply=viewer == target,
             can_review_target=viewer.can_review(target),

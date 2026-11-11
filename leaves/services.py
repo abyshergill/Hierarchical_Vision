@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from notifications.services import notify
 
-from .models import Holiday, LeaveApplication, LeaveDay, LeaveEntitlement, LeaveType
+from .models import Holiday, LeaveApplication, LeaveDay, LeaveEntitlement, LeaveType, OvertimeRequest
 from .utils import hours_to_days, q2
 
 Status = LeaveApplication.Status
@@ -120,6 +120,7 @@ def notify_new_application(application):
             f"{app.applicant.full_name} ({app.applicant.employee_id}) applied for {app.leave_type.name}: "
             f"{app.period_display} ({app.total_hours} h / {app.total_days} d).\n"
             + "\n".join(app.day_summary[:15]) + ("\n..." if app.days.count() > 15 else "")
+            + f"\nAlternate employee: {app.alternate_employee.full_name if app.alternate_employee else '-'}"
             + f"\nReason: {app.reason or '-'}",
             url=url,
         )
@@ -140,10 +141,31 @@ def notify_decision(application):
     )
 
 
+def notify_alternate(application):
+    """Tell the cover person once the leave is approved (so they are not surprised by a request that may be rejected)."""
+    app, alt = application, application.alternate_employee
+    if alt is None or not alt.is_active:
+        return
+    notify(
+        alt,
+        f"You are covering for {app.applicant.full_name}",
+        f"{app.applicant.full_name} ({app.applicant.employee_id}) will be on {app.leave_type.name} leave: "
+        f"{app.period_display}. You were named as their alternate employee.",
+        url=reverse("accounts:profile", kwargs={"employee_id": app.applicant.employee_id}),
+    )
+
+
 # ---------------------------------------------------------------- workflow
 @transaction.atomic
 def submit_application(application, days):
     """Persist the application with its per-day time windows, then notify the approver."""
+    from accounts.models import User
+
+    # Serialise concurrent submissions by the same person so two requests cannot both spend the last balance.
+    User.objects.select_for_update().get(pk=application.applicant_id)
+    balance = compute_balance(application.applicant, application.leave_type, application.start_date.year)
+    if application.total_hours > balance["remaining_hours"]:
+        raise ValidationError(f"Not enough {application.leave_type.name} balance for this request.")
     application.status = Status.PENDING
     application.save()
     LeaveDay.objects.bulk_create([
@@ -173,17 +195,78 @@ def review_application(application_pk, reviewer, approve, comment=""):
     app.status = Status.APPROVED if approve else Status.REJECTED
     app.reviewed_by = reviewer
     app.reviewed_at = timezone.now()
-    app.review_comment = comment.strip()
+    app.review_comment = comment.strip()[:500]
     app.save()
     notify_decision(app)
+    if approve:
+        notify_alternate(app)
     return app
 
 
+@transaction.atomic
 def cancel_application(application, user):
     if application.applicant_id != user.pk:
         raise PermissionDenied
+    application = LeaveApplication.objects.select_for_update().get(pk=application.pk)
     if application.status != Status.PENDING:
         raise ValidationError("Only pending applications can be cancelled.")
     application.status = Status.CANCELLED
     application.save(update_fields=["status"])
     return application
+
+
+# ---------------------------------------------------------------- overtime (OT)
+def notify_new_overtime(ot):
+    for approver in find_approvers(ot.applicant):
+        notify(
+            approver,
+            f"OT request from {ot.applicant.full_name}",
+            f"{ot.applicant.full_name} ({ot.applicant.employee_id}) requests overtime: {ot.period_display} ({ot.hours} h).\n"
+            f"Reason: {ot.reason}",
+            url=reverse("leaves:team") + "#overtime",
+        )
+
+
+def notify_overtime_decision(ot):
+    verb = "approved" if ot.status == Status.APPROVED else "rejected"
+    reviewer = ot.reviewed_by.full_name if ot.reviewed_by else "your manager"
+    msg = f"{reviewer} {verb} your overtime request for {ot.period_display} ({ot.hours} h)."
+    if ot.review_comment:
+        msg += f"\nComment: {ot.review_comment}"
+    notify(ot.applicant, f"OT {verb}", msg, url=reverse("leaves:overtime"))
+
+
+@transaction.atomic
+def submit_overtime(ot):
+    ot.status = Status.PENDING
+    ot.save()
+    notify_new_overtime(ot)
+    return ot
+
+
+@transaction.atomic
+def review_overtime(pk, reviewer, approve, comment=""):
+    ot = OvertimeRequest.objects.select_for_update().select_related("applicant").get(pk=pk)
+    if ot.status != Status.PENDING:
+        raise ValidationError("This overtime request has already been processed.")
+    if not reviewer.can_review(ot.applicant):
+        raise PermissionDenied("You cannot review this overtime request.")
+    ot.status = Status.APPROVED if approve else Status.REJECTED
+    ot.reviewed_by = reviewer
+    ot.reviewed_at = timezone.now()
+    ot.review_comment = comment.strip()[:500]
+    ot.save()
+    notify_overtime_decision(ot)
+    return ot
+
+
+@transaction.atomic
+def cancel_overtime(ot, user):
+    if ot.applicant_id != user.pk:
+        raise PermissionDenied
+    ot = OvertimeRequest.objects.select_for_update().get(pk=ot.pk)
+    if ot.status != Status.PENDING:
+        raise ValidationError("Only pending overtime requests can be cancelled.")
+    ot.status = Status.CANCELLED
+    ot.save(update_fields=["status"])
+    return ot

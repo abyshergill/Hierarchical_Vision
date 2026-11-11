@@ -10,6 +10,7 @@
   {% block extra_css %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
+<a class="skip-link" href="#main">Skip to content</a>
 <header class="topbar">
   <a class="brand" href="{% url 'accounts:home' %}">Hierarchical <b>Vision</b></a>
   {% with view=request.resolver_match.view_name %}
@@ -19,6 +20,7 @@
     <a href="{% url 'newsletter:list' %}" class="{% if 'newsletter:' in view %}active{% endif %}">Newsletter</a>
     {% if user.is_authenticated %}
     <a href="{% url 'leaves:apply' %}" class="{% if view == 'leaves:apply' %}active{% endif %}">Apply for leave</a>
+    <a href="{% url 'leaves:overtime' %}" class="{% if 'leaves:overtime' in view %}active{% endif %}">Overtime</a>
     <a href="{% url 'leaves:holidays' %}" class="{% if view == 'leaves:holidays' %}active{% endif %}">Holidays</a>
     <a href="{% url 'support:create' %}" class="{% if view == 'support:create' %}active{% endif %}">IT support</a>
     {% if user.can_approve_leaves %}<a href="{% url 'leaves:team' %}" class="{% if view == 'leaves:team' %}active{% endif %}">Team leaves</a>{% endif %}
@@ -66,12 +68,13 @@
 </header>
 
 {% block main %}
-<main class="container{% block container_class %}{% endblock %}">
+<main id="main" class="container{% block container_class %}{% endblock %}">
   {% for message in messages %}
-    <div class="flash flash-{{ message.tags }}">{{ message }}</div>
+    <div class="flash flash-{{ message.tags }}" role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}">{{ message }}</div>
   {% endfor %}
   {% block content %}{% endblock %}
 </main>
+<footer class="site-footer">Hierarchical Vision</footer>
 {% endblock %}
 <script src="{% static 'js/app.js' %}"></script>
 {% block scripts %}{% endblock %}

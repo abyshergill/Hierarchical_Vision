@@ -45,6 +45,7 @@ class LeaveFlow(TestCase):
         days = days if days is not None else [(MON, "09:00", "17:00")]
         base = {"leave_type": self.al.pk, "start_date": days[0][0] if days else MON,
                 "end_date": days[-1][0] if days else MON, "reason": "trip",
+                "alternate_employee": self.other_mgr.pk,
                 "day_date": [d[0].isoformat() for d in days],
                 "day_start": [d[1] for d in days], "day_end": [d[2] for d in days]}
         base.update(data)

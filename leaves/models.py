@@ -127,6 +127,10 @@ class LeaveApplication(models.Model):
     end_time = models.TimeField(null=True, blank=True)
     total_hours = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal("0"))
     reason = models.TextField(blank=True)
+    alternate_employee = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="covering_leaves",
+        help_text="Colleague who covers your work while you are away.",
+    )
 
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
     reviewed_by = models.ForeignKey(
@@ -176,3 +180,39 @@ class LeaveDay(models.Model):
 
     def __str__(self):
         return f"{self.date} {self.start_time:%H:%M}-{self.end_time:%H:%M}"
+
+
+class OvertimeRequest(models.Model):
+    """Overtime (OT) an employee asks to be approved by their manager / an Admin."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        CANCELLED = "cancelled", "Cancelled"
+
+    applicant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="overtime_requests")
+    date = models.DateField(db_index=True)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    hours = models.DecimalField(max_digits=5, decimal_places=2)
+    reason = models.TextField()
+
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="reviewed_overtime"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+        indexes = [models.Index(fields=["applicant", "date"])]
+
+    def __str__(self):
+        return f"{self.applicant} OT {self.date} {self.hours}h"
+
+    @property
+    def period_display(self):
+        return f"{self.date:%a %d %b %Y}, {self.start_time:%H:%M}\u2013{self.end_time:%H:%M}"

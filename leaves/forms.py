@@ -4,7 +4,7 @@ from decimal import Decimal
 from django import forms
 from django.conf import settings
 
-from .models import Holiday, LeaveApplication, LeaveDay, LeavePolicy, LeaveType
+from .models import Holiday, LeaveApplication, LeaveDay, LeavePolicy, LeaveType, OvertimeRequest
 from .services import compute_balance, holiday_dates
 from .utils import hourly_duration, time_ranges_overlap, working_days_between
 
@@ -48,7 +48,7 @@ class LeaveApplicationForm(forms.ModelForm):
 
     class Meta:
         model = LeaveApplication
-        fields = ["leave_type", "start_date", "end_date", "reason"]
+        fields = ["leave_type", "start_date", "end_date", "alternate_employee", "reason"]
         widgets = {"start_date": DATE(), "end_date": DATE(), "reason": forms.Textarea(attrs={"rows": 3})}
 
     def __init__(self, *args, user, **kwargs):
@@ -61,6 +61,15 @@ class LeaveApplicationForm(forms.ModelForm):
         self.fields["reason"].required = True
         self.fields["reason"].label = "Reason (required)"
         self.fields["reason"].help_text = "Please provide a reason for your leave."
+        from accounts.models import User
+
+        alt = self.fields["alternate_employee"]
+        alt.queryset = User.objects.filter(is_active=True).exclude(pk=user.pk).order_by("full_name")
+        alt.required = True
+        alt.label = "Alternate employee (covers for you)"
+        alt.empty_label = "Select a colleague\u2026"
+        alt.help_text = "Who will take over your work while you are away? They cannot be on leave on those days."
+        alt.label_from_instance = lambda u: f"{u.full_name} ({u.employee_id})"
         self.fields["end_date"].required = False
         self.fields["end_date"].help_text = "Leave blank for a single day."
 
@@ -122,6 +131,7 @@ class LeaveApplicationForm(forms.ModelForm):
                           + (" ..." if len(missing) > 6 else ""))
         if extra:
             errors.append("Not a working day in this range: " + ", ".join(_fmt(d) for d in sorted(extra)[:6]))
+        errors.extend(self._alternate_errors(data.get("alternate_employee"), working))
         if errors:
             raise forms.ValidationError(list(dict.fromkeys(errors)))
 
@@ -160,6 +170,25 @@ class LeaveApplicationForm(forms.ModelForm):
         inst.start_time, inst.end_time = (days[0]["start_time"], days[0]["end_time"]) if len(days) == 1 else (None, None)
         return data
 
+    def _alternate_errors(self, alternate, working):
+        """The cover person must be someone else and must not be away on any of the requested days."""
+        if alternate is None:
+            return []
+        if alternate.pk == self.user.pk:
+            return ["You cannot name yourself as your alternate employee."]
+        if not alternate.is_active:
+            return ["The alternate employee is no longer active."]
+        away = sorted(set(
+            LeaveDay.objects.filter(
+                application__applicant=alternate, application__status__in=[Status.PENDING, Status.APPROVED],
+                date__in=working,
+            ).values_list("date", flat=True)
+        ))
+        if away:
+            return [f"{alternate.full_name} is already on leave on " + ", ".join(_fmt(d) for d in away[:4])
+                    + (" ..." if len(away) > 4 else "") + " - please choose another alternate."]
+        return []
+
     def _overlap_errors(self, days, start, end):
         by_date = {x["date"]: x for x in days}
         errors = []
@@ -189,3 +218,71 @@ class LeaveApplicationForm(forms.ModelForm):
 
 class ReviewForm(forms.Form):
     comment = forms.CharField(required=False, max_length=500)
+
+
+class OvertimeForm(forms.ModelForm):
+    """One day, from/to time. Hours are always calculated on the server."""
+
+    class Meta:
+        model = OvertimeRequest
+        fields = ["date", "start_time", "end_time", "reason"]
+        widgets = {
+            "date": DATE(),
+            "start_time": forms.TimeInput(attrs={"type": "time", "step": 900}, format="%H:%M"),
+            "end_time": forms.TimeInput(attrs={"type": "time", "step": 900}, format="%H:%M"),
+            "reason": forms.Textarea(attrs={"rows": 3, "maxlength": 1000}),
+        }
+
+    def __init__(self, *args, user, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.instance.applicant = user
+        self.fields["reason"].label = "Reason / work to be done"
+        self.fields["reason"].max_length = 1000
+
+    def clean_reason(self):
+        reason = " ".join(self.cleaned_data.get("reason", "").split())
+        if not reason:
+            raise forms.ValidationError("Please describe the work that needs overtime.")
+        return reason[:1000]
+
+    def clean_date(self):
+        from django.utils import timezone
+
+        day = self.cleaned_data["date"]
+        today = timezone.localdate()
+        if (today - day).days > settings.OT_MAX_DAYS_BACK:
+            raise forms.ValidationError(f"Overtime can only be requested up to {settings.OT_MAX_DAYS_BACK} days back.")
+        if (day - today).days > settings.OT_MAX_DAYS_AHEAD:
+            raise forms.ValidationError(f"Overtime can only be requested up to {settings.OT_MAX_DAYS_AHEAD} days ahead.")
+        return day
+
+    def clean(self):
+        data = super().clean()
+        day, st, et = data.get("date"), data.get("start_time"), data.get("end_time")
+        if not (day and st and et):
+            return data
+        hours = hourly_duration(st, et)
+        if hours <= 0:
+            self.add_error("end_time", "The end time must be after the start time (overtime cannot cross midnight - "
+                                       "submit two requests instead).")
+            return data
+        cap = Decimal(settings.OT_MAX_HOURS_PER_DAY)
+        others = OvertimeRequest.objects.filter(applicant=self.user, date=day, status__in=[Status.PENDING, Status.APPROVED])
+        errors = []
+        for o in others:
+            if time_ranges_overlap(st, et, o.start_time, o.end_time):
+                errors.append(f"This overlaps your existing overtime request ({o.start_time:%H:%M}\u2013{o.end_time:%H:%M}).")
+        booked = sum((o.hours for o in others), Decimal("0"))
+        if hours + booked > cap:
+            errors.append(f"At most {cap} overtime hours per day are allowed (you already have {booked} h on {_fmt(day)}).")
+        clash = LeaveDay.objects.filter(
+            application__applicant=self.user, application__status__in=[Status.PENDING, Status.APPROVED], date=day,
+        )
+        for d in clash:
+            if time_ranges_overlap(st, et, d.start_time, d.end_time):
+                errors.append(f"You are on leave {d.start_time:%H:%M}\u2013{d.end_time:%H:%M} that day - overtime cannot overlap leave.")
+        if errors:
+            raise forms.ValidationError(errors)
+        self.instance.hours = hours
+        return data

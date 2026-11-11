@@ -7,7 +7,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 
 from . import services
-from .models import LeaveApplication
+from .models import LeaveApplication, OvertimeRequest
 
 _FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
 
@@ -30,7 +30,7 @@ def build_leave_csv_response(target, year, exported_by):
     balances = services.get_balances_for_users([target], year)[target.pk]
     applications = (
         LeaveApplication.objects.filter(applicant=target, start_date__year=year)
-        .select_related("leave_type", "reviewed_by").prefetch_related("days").order_by("start_date", "created_at")
+        .select_related("leave_type", "reviewed_by", "alternate_employee").prefetch_related("days").order_by("start_date", "created_at")
     )
     now = timezone.localtime()
     filename = f"leaves_{safe_filename_part(target.employee_id)}_{year}.csv"
@@ -64,14 +64,15 @@ def build_leave_csv_response(target, year, exported_by):
 
     w.writerow(["LEAVE APPLICATIONS"])
     w.writerow(["Leave type", "Start date", "End date", "Start time", "End time", "Hourly", "Hours", "Days",
-                "Status", "Reason", "Applied on", "Reviewed by", "Reviewed at", "Review comment"])
+                "Status", "Alternate employee", "Reason", "Applied on", "Reviewed by", "Reviewed at", "Review comment"])
     for a in applications:
         w.writerow([
             safe_cell(a.leave_type.name), a.start_date.isoformat(), a.end_date.isoformat(),
             a.start_time.strftime("%H:%M") if a.start_time else "",
             a.end_time.strftime("%H:%M") if a.end_time else "",
             "Yes" if a.is_hourly else "No", a.total_hours, a.total_days,
-            a.get_status_display(), safe_cell(a.reason),
+            a.get_status_display(),
+            safe_cell(a.alternate_employee.full_name if a.alternate_employee else ""), safe_cell(a.reason),
             timezone.localtime(a.created_at).strftime("%Y-%m-%d %H:%M"),
             safe_cell(a.reviewed_by.full_name if a.reviewed_by else ""),
             timezone.localtime(a.reviewed_at).strftime("%Y-%m-%d %H:%M") if a.reviewed_at else "",
@@ -84,4 +85,11 @@ def build_leave_csv_response(target, year, exported_by):
         for d in a.days.all():
             w.writerow([d.date.isoformat(), d.date.strftime("%A"), safe_cell(a.leave_type.name),
                         d.start_time.strftime("%H:%M"), d.end_time.strftime("%H:%M"), d.hours, a.get_status_display()])
+    w.writerow([])
+    w.writerow(["OVERTIME (OT)"])
+    w.writerow(["Date", "From", "To", "Hours", "Status", "Reason", "Reviewed by", "Review comment"])
+    for o in OvertimeRequest.objects.filter(applicant=target, date__year=year).select_related("reviewed_by").order_by("date", "start_time"):
+        w.writerow([o.date.isoformat(), o.start_time.strftime("%H:%M"), o.end_time.strftime("%H:%M"), o.hours,
+                    o.get_status_display(), safe_cell(o.reason),
+                    safe_cell(o.reviewed_by.full_name if o.reviewed_by else ""), safe_cell(o.review_comment)])
     return response

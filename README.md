@@ -23,21 +23,21 @@ cp .env.example .env              # then edit SECRET_KEY
 ```
 **Then (all platforms)**
 ```bash
-python manage.py makemigrations accounts leaves notifications newsletter support
-python manage.py migrate
+python manage.py migrate              # migrations are committed; run makemigrations only after changing a model
 python manage.py test                 # all tests should pass
 python manage.py createsuperuser      # Employee ID, email, full name, password -> Admin role
 python manage.py backfill_leave_days  # only if you already had leave requests made before this version (optional)
 python manage.py seed_demo            # optional demo people / leaves / holidays
 python manage.py runserver            # http://127.0.0.1:8000
 ```
-If an earlier attempt left files behind, delete `db.sqlite3` and any `accounts/migrations`, `leaves/migrations`,
-`notifications/migrations`, `newsletter/migrations` folders first, then run the commands above.
 `seed_demo` users (password `ChangeMe!2026`): `EMP-001` Admin, `EMP-100`/`EMP-200` Managers, `EMP-101`/`EMP-102`/`EMP-201` Employees.
 
 ## What's new in this version
 | Area | Change |
 |---|---|
+| **Overtime (OT)** | *Overtime* in the top bar: employees request OT (date, from/to time, reason; hours are calculated on the server, max `OT_MAX_HOURS_PER_DAY`, no overlap with other OT or with their own leave). The manager above them (or an Admin) approves/rejects under *Team leaves → Pending OT requests*; the employee is notified. Pending OT can be cancelled by its owner; OT shows in the profile *Leaves* tab and the CSV export. |
+| **Alternate employee** | Every leave request must name an **alternate employee** (not yourself, active, and not on leave on those days). Managers see it when approving, it is in the CSV export, and the alternate is notified once the leave is approved. |
+| **Safety** | The last active Admin cannot be demoted/deactivated; leave submission re-checks the balance inside a transaction; invalid review decisions return 400; review/cancel run under row locks. |
 | **Leave** | Employees set a **from / to time for every working day** of a request. An Admin-defined **maximum hours per day** (`/leaves/policy/`, optional override per leave type) is enforced on the server. Weekends/holidays are skipped. Per-day detail is shown to managers and included in the CSV export. |
 | **Salary privacy** | The Salary tab is visible **only to Admins and the account owner** - managers (even the direct manager) cannot see it, not even via `?tab=salary`. |
 | **Search page** | Minimal: logo + search box only. |

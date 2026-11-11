@@ -1,0 +1,7 @@
+<form method="post" action="{% url 'leaves:overtime_review' o.pk %}" class="review-form">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <input type="text" name="comment" maxlength="500" placeholder="Comment (optional)" aria-label="Comment">
+  <button class="btn btn-green btn-sm" name="decision" value="approve">Approve</button>
+  <button class="btn btn-red btn-sm" name="decision" value="reject">Reject</button>
+</form>

@@ -7,7 +7,7 @@
   <h2>Pending approvals ({{ pending|length }})</h2>
   {% if pending %}
   <div class="table-wrap"><table>
-    <thead><tr><th>Employee</th><th>Type</th><th>Period</th><th class="num">Duration</th><th>Reason</th><th>Decision</th></tr></thead>
+    <thead><tr><th>Employee</th><th>Type</th><th>Period</th><th class="num">Duration</th><th>Alternate</th><th>Reason</th><th>Decision</th></tr></thead>
     <tbody>{% for app in pending %}
       <tr>
         <td><a href="{{ app.applicant.get_absolute_url }}?tab=leaves">{{ app.applicant.full_name }}</a><div class="muted small">{{ app.applicant.employee_id }}</div></td>
@@ -16,12 +16,31 @@
           <details class="day-details"><summary>{{ app.days.all|length }} day{{ app.days.all|length|pluralize }}</summary>
             <ul class="plain small">{% for line in app.day_summary %}<li>{{ line }}</li>{% endfor %}</ul></details>{% endif %}</td>
         <td class="num">{{ app.total_hours }} h <span class="muted">({{ app.total_days }} d)</span></td>
+        <td>{{ app.alternate_employee.full_name|default:"—" }}</td>
         <td>{{ app.reason|truncatechars:80 }}</td>
         <td>{% include "partials/_review_form.html" with next=request.get_full_path %}</td>
       </tr>{% endfor %}
     </tbody>
   </table></div>
   {% else %}<p class="muted">Nothing waiting for your review. 🎉</p>{% endif %}
+</section>
+
+<section class="card" id="overtime">
+  <h2>Pending OT requests ({{ pending_ot|length }})</h2>
+  {% if pending_ot %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Employee</th><th>Date &amp; time</th><th class="num">Hours</th><th>Reason</th><th>Decision</th></tr></thead>
+    <tbody>{% for o in pending_ot %}
+      <tr>
+        <td><a href="{{ o.applicant.get_absolute_url }}">{{ o.applicant.full_name }}</a><div class="muted small">{{ o.applicant.employee_id }}</div></td>
+        <td>{{ o.period_display }}</td>
+        <td class="num">{{ o.hours }} h</td>
+        <td>{{ o.reason|truncatechars:100 }}</td>
+        <td>{% include "partials/_ot_review_form.html" with next=request.get_full_path %}</td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">No overtime waiting for approval.</p>{% endif %}
 </section>
 
 <section class="card">
@@ -44,7 +63,7 @@
   <section class="card">
     <h2>Upcoming approved leaves</h2>
     {% for app in upcoming %}
-      <p><strong>{{ app.applicant.full_name }}</strong> — {{ app.leave_type.name }}<br><span class="muted">{{ app.period_display }} · {{ app.total_hours }} h</span></p>
+      <p><strong>{{ app.applicant.full_name }}</strong> — {{ app.leave_type.name }}<br><span class="muted">{{ app.period_display }} · {{ app.total_hours }} h{% if app.alternate_employee %} · cover: {{ app.alternate_employee.full_name }}{% endif %}</span></p>
     {% empty %}<p class="muted">None scheduled.</p>{% endfor %}
   </section>
   <section class="card">

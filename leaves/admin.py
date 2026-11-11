@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Holiday, LeaveApplication, LeaveDay, LeaveEntitlement, LeavePolicy, LeaveType
+from .models import Holiday, LeaveApplication, LeaveDay, LeaveEntitlement, LeavePolicy, LeaveType, OvertimeRequest
 
 
 @admin.register(LeaveType)
@@ -37,7 +37,14 @@ class LeaveDayInline(admin.TabularInline):
 
 @admin.register(LeaveApplication)
 class LeaveApplicationAdmin(admin.ModelAdmin):
-    list_display = ("applicant", "leave_type", "start_date", "end_date", "total_hours", "status")
+    list_display = ("applicant", "leave_type", "start_date", "end_date", "total_hours", "alternate_employee", "status")
     list_filter = ("status", "leave_type")
     search_fields = ("applicant__full_name", "applicant__employee_id")
     inlines = [LeaveDayInline]
+
+
+@admin.register(OvertimeRequest)
+class OvertimeRequestAdmin(admin.ModelAdmin):
+    list_display = ("applicant", "date", "start_time", "end_time", "hours", "status", "reviewed_by")
+    list_filter = ("status",)
+    search_fields = ("applicant__full_name", "applicant__employee_id")

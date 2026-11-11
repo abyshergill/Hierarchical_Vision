@@ -114,6 +114,11 @@ class UserAdminForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        # Never let the last active Admin be demoted or deactivated - nobody could manage the system afterwards.
+        if self.instance.pk and self.instance.is_admin and self.instance.is_active:
+            still_admin = cleaned.get("role", self.instance.role) == "admin" and cleaned.get("is_active", True)
+            if not still_admin and not User.objects.filter(role="admin", is_active=True).exclude(pk=self.instance.pk).exists():
+                raise forms.ValidationError("This is the last active Admin - promote someone else before changing this account.")
         p1, p2 = cleaned.get("password1"), cleaned.get("password2")
         if p1 or p2:
             if p1 != p2:

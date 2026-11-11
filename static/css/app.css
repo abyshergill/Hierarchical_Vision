@@ -244,3 +244,50 @@ input[type=file]::file-selector-button:hover{background:var(--t-blue);color:var(
 .cur-item img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;transition:opacity .15s}
 .cur-remove{display:flex;gap:6px;align-items:center;padding:5px 8px;font-size:.78rem;color:var(--muted)}
 .cur-item:has(input:checked){border-color:var(--red)} .cur-item:has(input:checked) img{opacity:.35} .cur-item:has(input:checked) .cur-remove{color:var(--on-red);background:var(--t-red)}
+
+/* ---------- v3 polish: layout, forms, tables, mobile ---------- */
+.skip-link{position:absolute;left:-999px;top:8px;background:var(--blue);color:#fff;padding:8px 14px;border-radius:99px;z-index:100}
+.skip-link:focus{left:12px;text-decoration:none}
+.topbar nav>a,.menu>summary,.btn,.pill,.role{white-space:nowrap}
+.topbar{row-gap:6px}
+.brand{letter-spacing:-.01em}
+.container{min-height:calc(100vh - 120px)}
+h1,h2{line-height:1.25} .card>h1:first-child,.card>h2:first-child{margin-top:0}
+.btn:disabled,.btn[disabled]{opacity:.5;cursor:not-allowed;transform:none}
+.btn-primary:focus-visible,.btn-green:focus-visible,.btn-red:focus-visible{outline-offset:3px}
+textarea{resize:vertical;min-height:84px}
+select{appearance:none;-webkit-appearance:none;padding-right:34px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 55%,calc(100% - 13px) 55%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.8}
+input[readonly]{background:var(--surface-2);color:var(--muted)}
+.field label{color:var(--text)} .field small{line-height:1.4}
+.has-error input:focus,.has-error select:focus,.has-error textarea:focus{outline-color:rgba(255,55,95,.4)}
+.flash{display:flex;flex-direction:column;gap:2px;line-height:1.45;transition:opacity .4s}
+.flash.is-hiding{opacity:0}
+.stat{font-size:2rem;font-weight:600;margin:.1em 0;letter-spacing:-.01em} .stat .muted{font-size:.9rem;font-weight:400}
+.card h2+.table-wrap{margin-top:4px}
+th{white-space:nowrap} td.actions{white-space:nowrap}
+.table-wrap{border-radius:10px;-webkit-overflow-scrolling:touch}
+.table-wrap table td .review-form{min-width:230px}
+.review-form input{flex:1 1 140px;min-width:120px}
+.pill{line-height:1.5}
+.pill-pending::before,.pill-approved::before,.pill-rejected::before,.pill-cancelled::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px}
+.empty-state{padding:36px 20px}
+.card.center h1{font-size:3rem;margin:0 0 6px;color:var(--blue)} .card.center p{margin:0 0 18px;color:var(--muted)}
+.auth-card h1{margin-top:0}
+.day-planner .row-between{margin-bottom:6px}
+.site-footer{text-align:center;padding:18px 20px 30px;color:var(--muted);font-size:.8rem}
+@media(max-width:760px){
+  .topbar nav .menu{position:static}
+  .topbar nav .menu-panel{left:14px;right:14px;min-width:0;max-width:none}
+  .grid-2{gap:0}
+  h1{font-size:1.5rem}
+  .day-table input{min-width:84px}
+  .table-wrap table td .review-form{min-width:200px}
+  .two-col{gap:0}
+  .profile-head-row{padding:0 16px}
+  .info-grid dt{margin-top:6px}
+}
+@media(max-width:480px){.btn{padding:8px 13px}.card{padding:16px;border-radius:14px}.container{padding:16px 12px 48px}}
+@media print{.topbar,.site-footer,.btn,.skip-link{display:none!important}body{background:#fff;color:#000}.card{box-shadow:none;border:1px solid #ccc}}

@@ -170,6 +170,20 @@
     rebuild();      // also re-renders rows that came back from the server after a validation error
   }
 
+  /* ---------- Overtime form: live hours ---------- */
+  var otForm = document.getElementById("ot-form");
+  if (otForm) {
+    var otS = otForm.querySelector("[name=start_time]"), otE = otForm.querySelector("[name=end_time]"), otOut = document.getElementById("ot-hours");
+    var otMin = function (v) { var m = /^(\d{1,2}):(\d{2})/.exec(v || ""); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+    var otCalc = function () {
+      var a = otMin(otS.value), b = otMin(otE.value);
+      if (a === null || b === null) { otOut.hidden = true; return; }
+      otOut.hidden = false;
+      otOut.textContent = b > a ? "Duration: " + (Math.round((b - a) / 60 * 100) / 100) + " h" : "The end time must be after the start time.";
+    };
+    otS.addEventListener("input", otCalc); otE.addEventListener("input", otCalc); otCalc();
+  }
+
   /* ---------- people picker (broadcast + newsletter publishers) ---------- */
   document.querySelectorAll("[data-filter-list]").forEach(function (input) {
     var list = document.getElementById(input.dataset.filterList);
@@ -219,8 +233,14 @@
     if (f.classList && f.classList.contains("js-confirm") && !window.confirm(f.dataset.confirm || "Are you sure?")) e.preventDefault();
   });
 
+  /* ---------- success messages fade out ---------- */
+  document.querySelectorAll(".flash-success").forEach(function (f) {
+    setTimeout(function () { f.classList.add("is-hiding"); setTimeout(function () { f.remove(); }, 450); }, 7000);
+  });
+
   /* ---------- dropdown menus: close on outside click / Escape ---------- */
   var menus = document.querySelectorAll("details.menu");
+  menus.forEach(function (m) { m.addEventListener("toggle", function () { if (m.open) menus.forEach(function (o) { if (o !== m) o.removeAttribute("open"); }); }); });
   document.addEventListener("click", function (e) { menus.forEach(function (m) { if (!m.contains(e.target)) m.removeAttribute("open"); }); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") menus.forEach(function (m) { m.removeAttribute("open"); }); });
 })();

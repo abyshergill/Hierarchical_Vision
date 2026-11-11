@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Overtime (OT){% endblock %}
+{% block content %}
+<div class="two-col">
+  <section class="card">
+    <p class="eyebrow">OVERTIME</p><h1>Request overtime (OT)</h1>
+    <p class="muted">Your manager (or an Admin) must approve every OT request. Up to {{ max_hours }} h per day.</p>
+    <form method="post" id="ot-form" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="flash flash-error">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+      {% include "partials/_field.html" with field=form.date %}
+      <div class="grid-2">
+        {% include "partials/_field.html" with field=form.start_time %}
+        {% include "partials/_field.html" with field=form.end_time %}
+      </div>
+      <p class="muted small" id="ot-hours" aria-live="polite" hidden></p>
+      {% include "partials/_field.html" with field=form.reason %}
+      <button class="btn btn-primary" type="submit">Submit OT request</button>
+    </form>
+  </section>
+  <aside class="card">
+    <h2>Approved OT · {{ year }}</h2>
+    <p class="stat">{{ approved_hours }} <span class="muted">hours</span></p>
+    <p class="muted small">Pending requests are not counted until they are approved. You can cancel a request while it is pending.</p>
+  </aside>
+</div>
+
+<section class="card">
+  <h2>My OT requests</h2>
+  {% if requests %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Date &amp; time</th><th class="num">Hours</th><th>Status</th><th>Reason / decision</th><th></th></tr></thead>
+    <tbody>{% for o in requests %}
+      <tr>
+        <td>{{ o.period_display }}</td>
+        <td class="num">{{ o.hours }} h</td>
+        <td><span class="pill pill-{{ o.status }}">{{ o.get_status_display }}</span></td>
+        <td>{{ o.reason|truncatechars:80 }}
+          {% if o.reviewed_by %}<div class="muted small">{{ o.get_status_display }} by {{ o.reviewed_by.full_name }}{% if o.review_comment %}: “{{ o.review_comment }}”{% endif %}</div>{% endif %}</td>
+        <td class="actions">{% if o.status == "pending" %}
+          <form method="post" action="{% url 'leaves:overtime_cancel' o.pk %}">{% csrf_token %}<button class="btn btn-sm">Cancel</button></form>{% endif %}</td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">You have not requested any overtime yet.</p>{% endif %}
+</section>
+{% endblock %}

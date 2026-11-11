@@ -31,7 +31,7 @@
   <h2>Applications &amp; history</h2>
   {% if applications %}
   <div class="table-wrap"><table>
-    <thead><tr><th>Type</th><th>Period</th><th class="num">Duration</th><th>Status</th><th>Reason / decision</th><th></th></tr></thead>
+    <thead><tr><th>Type</th><th>Period</th><th class="num">Duration</th><th>Status</th><th>Alternate</th><th>Reason / decision</th><th></th></tr></thead>
     <tbody>
     {% for app in applications %}
       <tr>
@@ -41,6 +41,7 @@
             <ul class="plain small">{% for line in app.day_summary %}<li>{{ line }}</li>{% endfor %}</ul></details>{% endif %}</td>
         <td class="num">{{ app.total_hours }} h <span class="muted">({{ app.total_days }} d)</span></td>
         <td>{% include "partials/_status.html" %}</td>
+        <td>{{ app.alternate_employee.full_name|default:"—" }}</td>
         <td>{{ app.reason|truncatechars:60 }}
           {% if app.reviewed_by %}<div class="muted small">{{ app.get_status_display }} by {{ app.reviewed_by.full_name }}{% if app.review_comment %}: “{{ app.review_comment }}”{% endif %}</div>{% endif %}</td>
         <td class="actions">
@@ -57,6 +58,20 @@
     </tbody>
   </table></div>
   {% else %}<p class="muted">No leave applications yet.</p>{% endif %}
+</section>
+
+<section class="card">
+  <div class="row-between"><h2>Overtime (OT)</h2>{% if can_apply %}<a class="btn btn-sm" href="{% url 'leaves:overtime' %}">Request OT</a>{% endif %}</div>
+  {% if overtime %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Date &amp; time</th><th class="num">Hours</th><th>Status</th><th>Reason / decision</th></tr></thead>
+    <tbody>{% for o in overtime %}
+      <tr><td>{{ o.period_display }}</td><td class="num">{{ o.hours }} h</td>
+        <td><span class="pill pill-{{ o.status }}">{{ o.get_status_display }}</span></td>
+        <td>{{ o.reason|truncatechars:60 }}{% if o.reviewed_by %}<div class="muted small">by {{ o.reviewed_by.full_name }}{% if o.review_comment %}: “{{ o.review_comment }}”{% endif %}</div>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">No overtime requests.</p>{% endif %}
 </section>
 
 {% if upcoming_holidays %}
