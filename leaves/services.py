@@ -260,6 +260,20 @@ def review_overtime(pk, reviewer, approve, comment=""):
     return ot
 
 
+def bulk_review(review_fn, pks, reviewer, approve=True, comment=""):
+    """Run ``review_fn`` (review_application / review_overtime) for each pk, one transaction per item, so one
+    failure (already processed, not allowed, balance exceeded) does not undo the others.
+    Returns (done, failed) where ``failed`` is a list of short error strings."""
+    done, failed = [], []
+    for pk in pks:
+        try:
+            done.append(review_fn(pk, reviewer, approve, comment))
+        except (ValidationError, PermissionDenied, LeaveApplication.DoesNotExist, OvertimeRequest.DoesNotExist) as exc:
+            msg = "; ".join(exc.messages) if isinstance(exc, ValidationError) else (str(exc) or "Not allowed.")
+            failed.append(f"#{pk}: {msg}")
+    return done, failed
+
+
 @transaction.atomic
 def cancel_overtime(ot, user):
     if ot.applicant_id != user.pk:

@@ -28,6 +28,7 @@ python manage.py test                 # all tests should pass
 python manage.py createsuperuser      # Employee ID, email, full name, password -> Admin role
 python manage.py backfill_leave_days  # only if you already had leave requests made before this version (optional)
 python manage.py seed_demo            # optional demo people / leaves / holidays
+python manage.py seed_bulk            # optional, after seed_demo: ~2,100 people, leaves, OT, groups (see below)
 python manage.py runserver            # http://127.0.0.1:8000
 ```
 `seed_demo` users (password `ChangeMe!2026`): `EMP-001` Admin, `EMP-100`/`EMP-200` Managers, `EMP-101`/`EMP-102`/`EMP-201` Employees.
@@ -35,6 +36,10 @@ python manage.py runserver            # http://127.0.0.1:8000
 ## What's new in this version
 | Area | Change |
 |---|---|
+| **Approve all** | *Team leaves* has an **Approve all (N)** button (with an optional shared comment) above both *Pending approvals* and *Pending OT requests*, next to the per-row Approve/Reject. Only the rows shown on the page are approved, each one is re-checked (permission, balance, still pending) and one failure does not stop the others. |
+| **Org chart** | **Hide menu** button (or the `M` key) in the chart toolbar hides the top bar so the chart uses the whole window; remembered per browser. |
+| **Newsletter sidebar** | Groups / Pinned sidebar grows to 380 px (≥1280 px screens) and 440 px (≥1600 px). |
+| **Bulk demo data** | `seed_bulk`: 10 IT admins (`EMP-IT01`-`IT10`, Admin role), 85 managers (`MGR-001`-`005` department heads, `MGR-006`-`085` team managers), 2,000 employees (`EMP-10001`-`EMP-12000`), ~480 leave and ~540 OT requests in every status, 150 IT-support tickets with status updates, 350 profile status lines, 20 department groups with members and access requests, 10 pinned posts. Same password as `seed_demo`. |
 | **Overtime (OT)** | *Overtime* in the top bar: employees request OT (date, from/to time, reason; hours are calculated on the server, max `OT_MAX_HOURS_PER_DAY`, no overlap with other OT or with their own leave). The manager above them (or an Admin) approves/rejects under *Team leaves → Pending OT requests*; the employee is notified. Pending OT can be cancelled by its owner; OT shows in the profile *Leaves* tab and the CSV export. |
 | **Alternate employee** | Every leave request must name an **alternate employee** (not yourself, active, and not on leave on those days). Managers see it when approving, it is in the CSV export, and the alternate is notified once the leave is approved. |
 | **Safety** | The last active Admin cannot be demoted/deactivated; leave submission re-checks the balance inside a transaction; invalid review decisions return 400; review/cancel run under row locks. |

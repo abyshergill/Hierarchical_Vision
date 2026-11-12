@@ -134,9 +134,22 @@
     else if (e.key === 'ArrowRight') { view.x -= step; apply(); }
     else if (e.key === 'ArrowUp') { view.y += step; apply(); }
     else if (e.key === 'ArrowDown') { view.y -= step; apply(); }
+    else if (e.key === 'm' || e.key === 'M') setMenuHidden(!document.body.classList.contains('chart-focus'));
     else return;
     e.preventDefault();
   });
+
+  /* ---- hide / show the top menu bar so the chart can use the whole screen (remembered per browser) ---- */
+  var menuBtn = document.getElementById('toggle-menu');
+  function setMenuHidden(hidden) {
+    document.body.classList.toggle('chart-focus', hidden);
+    menuBtn.textContent = hidden ? 'Show menu' : 'Hide menu';
+    menuBtn.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    menuBtn.title = (hidden ? 'Show' : 'Hide') + ' the top menu bar (M)';
+    try { localStorage.setItem('hv-chart-menu-hidden', hidden ? '1' : '0'); } catch (err) { /* storage blocked */ }
+  }
+  menuBtn.addEventListener('click', function () { setMenuHidden(!document.body.classList.contains('chart-focus')); });
+  try { if (localStorage.getItem('hv-chart-menu-hidden') === '1') setMenuHidden(true); } catch (err) { /* storage blocked */ }
 
   document.getElementById('zoom-in').addEventListener('click', function () { zoomCenter(1.25); });
   document.getElementById('zoom-out').addEventListener('click', function () { zoomCenter(1 / 1.25); });

@@ -120,3 +120,8 @@
 :root[data-theme="dark"] .member-card,:root[data-theme="dark"] .zoom-controls{box-shadow:0 8px 32px rgba(0,0,0,.5)}
 .org-canvas,.member-card,.zoom-controls button,.search-input{transition:background-color .25s,border-color .25s,color .25s}
 @media(max-width:600px){.chart-hint{display:none}.zoom-controls{right:8px;bottom:8px;max-width:calc(100% - 16px);gap:4px;padding:6px}.zoom-controls button{min-height:36px;padding:6px 9px}.chart-search{top:10px;width:calc(100% - 20px)}.search-results-overlay{padding:68px 14px 24px}.results-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}.breadcrumbs{top:58px;left:10px;max-width:calc(100% - 20px);font-size:12px}.lineage-chain{padding-left:26px}.lineage-chain::before{left:12px}.lineage-item{max-width:100%;overflow-wrap:anywhere}}
+/* "Hide menu": the top bar disappears and the canvas takes the full window */
+.chart-page.chart-focus .topbar{display:none}
+.chart-page.chart-focus .chart-search{top:12px}
+.zoom-controls #toggle-menu[aria-pressed="true"]{background:var(--accent-blue);color:#fff}
+@media(max-width:600px){.zoom-controls{flex-wrap:wrap;justify-content:flex-end}}

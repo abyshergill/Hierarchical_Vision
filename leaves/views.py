@@ -193,6 +193,43 @@ def review(request, pk):
     return redirect(_safe_next(request, reverse("leaves:team")))
 
 
+MAX_BULK_ITEMS = 1000
+
+
+def _bulk_ids(request):
+    """Ids of the rows the reviewer saw on the page (so nothing submitted after page load is approved blindly)."""
+    ids = []
+    for raw in request.POST.getlist("ids")[:MAX_BULK_ITEMS]:
+        try:
+            ids.append(int(raw))
+        except (TypeError, ValueError):
+            continue
+    return list(dict.fromkeys(ids))
+
+
+def _bulk_respond(request, done, failed, label):
+    if done:
+        messages.success(request, f"Approved {len(done)} {label}{'s' if len(done) != 1 else ''}.")
+    if failed:
+        shown = "; ".join(failed[:5]) + (f" (+{len(failed) - 5} more)" if len(failed) > 5 else "")
+        messages.error(request, f"{len(failed)} could not be approved: {shown}")
+    if not done and not failed:
+        messages.info(request, "Nothing to approve.")
+
+
+@login_required
+@require_POST
+def review_all(request):
+    """Approve every pending leave request listed on the Team leaves page in one click."""
+    if not request.user.can_approve_leaves:
+        raise PermissionDenied
+    done, failed = services.bulk_review(
+        services.review_application, _bulk_ids(request), request.user, True, request.POST.get("comment", "")
+    )
+    _bulk_respond(request, done, failed, "leave request")
+    return redirect(_safe_next(request, reverse("leaves:team")))
+
+
 # ----------------------------------------------------------------- overtime (OT)
 @login_required
 def overtime(request):
@@ -240,6 +277,19 @@ def overtime_review(request, pk):
     except OvertimeRequest.DoesNotExist:
         raise Http404
     return redirect(_safe_next(request, reverse("leaves:team")))
+
+
+@login_required
+@require_POST
+def overtime_review_all(request):
+    """Approve every pending OT request listed on the Team leaves page in one click."""
+    if not request.user.can_approve_leaves:
+        raise PermissionDenied
+    done, failed = services.bulk_review(
+        services.review_overtime, _bulk_ids(request), request.user, True, request.POST.get("comment", "")
+    )
+    _bulk_respond(request, done, failed, "OT request")
+    return redirect(_safe_next(request, reverse("leaves:team") + "#overtime"))
 
 
 # ----------------------------------------------------------------- admin: standard leaves
