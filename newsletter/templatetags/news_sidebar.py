@@ -5,8 +5,8 @@ from newsletter.models import NewsGroup, Post
 
 register = template.Library()
 
-SIDEBAR_GROUPS = 25
-SIDEBAR_PINNED = 8
+SIDEBAR_GROUPS = 200       # everything is rendered; the template shows 5 and 'Show all' reveals the rest
+SIDEBAR_PINNED = 50
 
 
 @register.inclusion_tag("newsletter/_sidebar.html", takes_context=True)
@@ -22,6 +22,7 @@ def news_sidebar(context):
         states = services.group_states(user, groups)
         for g in groups:
             g.state = states.get(g.pk)
+        groups.sort(key=lambda g: g.state not in ("manager", "member"))   # my groups first (stable: keeps name order)
     pinned = list(
         Post.objects.visible_to(user).filter(is_pinned=True).select_related("group").order_by("-created_at")[:SIDEBAR_PINNED]
     )

@@ -19,5 +19,6 @@
     </div>
   </article>
   {% empty %}<div class="card empty-state"><span class="big-icon">&#128101;</span>No groups yet.</div>{% endfor %}
+  {% include "partials/_pager.html" %}
 </div>
 {% endblock %}

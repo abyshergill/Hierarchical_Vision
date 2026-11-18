@@ -7,9 +7,9 @@
     {% if not signed_in %}
       <p class="muted small"><a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}">Sign in</a> to see department groups.</p>
     {% else %}
-      <ul class="side-list">
+      <ul class="side-list" data-collapse="5">
         {% for g in groups %}
-        <li>
+        <li{% if forloop.counter > 5 %} class="extra" hidden{% endif %}>
           <a class="side-link" href="{{ g.get_absolute_url }}">
             <span class="side-icon" aria-hidden="true">{% if g.state %}&#128101;{% else %}&#128274;{% endif %}</span>
             <span class="side-text"><strong>{{ g.name }}</strong>{% if g.manager %}<span class="muted small">Manager: {{ g.manager.full_name }}</span>{% endif %}</span>
@@ -21,6 +21,7 @@
         </li>
         {% empty %}<li class="side-empty muted small">No groups yet.{% if viewer.is_admin %} Create the first department group.{% endif %}</li>{% endfor %}
       </ul>
+      {% if groups|length > 5 %}<button type="button" class="side-toggle small" data-toggle-list data-more="Show all groups ({{ groups|length }})" data-less="Show less" aria-expanded="false">Show all groups ({{ groups|length }})</button>{% endif %}
       <p class="side-foot small"><a href="{% url 'newsletter:group_list' %}">All groups{% if more_groups %} (+{{ more_groups }} more){% endif %} &rsaquo;</a></p>
     {% endif %}
   </section>
@@ -29,9 +30,9 @@
 
   <section class="side-sec" aria-labelledby="side-pinned">
     <div class="side-head"><h2 id="side-pinned">&#128204; Pinned</h2></div>
-    <ul class="side-list">
+    <ul class="side-list" data-collapse="5">
       {% for p in pinned %}
-      <li>
+      <li{% if forloop.counter > 5 %} class="extra" hidden{% endif %}>
         <a class="side-link" href="{{ p.get_absolute_url }}">
           <span class="side-text"><strong>{{ p.title }}</strong>
             <span class="muted small">{% if p.group %}{{ p.group.name }}{% else %}Company{% endif %} &middot; {{ p.created_at|date:"d M Y" }}</span></span>
@@ -39,5 +40,6 @@
       </li>
       {% empty %}<li class="side-empty muted small">Nothing is pinned.</li>{% endfor %}
     </ul>
+    {% if pinned|length > 5 %}<button type="button" class="side-toggle small" data-toggle-list data-more="Show all pinned ({{ pinned|length }})" data-less="Show less" aria-expanded="false">Show all pinned ({{ pinned|length }})</button>{% endif %}
   </section>
 </aside>

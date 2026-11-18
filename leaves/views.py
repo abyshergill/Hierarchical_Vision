@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
@@ -99,8 +100,9 @@ def holidays(request):
             form.save()
             messages.success(request, "Holiday added.")
             return redirect(f"{reverse('leaves:holidays')}?year={year}")
+    page = Paginator(Holiday.objects.filter(date__year=year), 15).get_page(request.GET.get("page"))
     return render(request, "leaves/holidays.html", {
-        "holidays": Holiday.objects.filter(date__year=year), "year": year, "form": form,
+        "page": page, "holidays": page.object_list, "year": year, "form": form, "extra": f"&year={year}",
     })
 
 
@@ -239,14 +241,14 @@ def overtime(request):
         ot = services.submit_overtime(form.instance)
         messages.success(request, f"Overtime request submitted: {ot.period_display} ({ot.hours} h). Your manager was notified.")
         return redirect("leaves:overtime")
-    mine = OvertimeRequest.objects.filter(applicant=request.user).select_related("reviewed_by")[:50]
+    mine = Paginator(OvertimeRequest.objects.filter(applicant=request.user).select_related("reviewed_by"), 10).get_page(request.GET.get("page"))
     year = timezone.localdate().year
     approved_hours = sum(
         (o.hours for o in OvertimeRequest.objects.filter(applicant=request.user, status=Status.APPROVED, date__year=year)),
         0,
     )
     return render(request, "leaves/overtime.html", {
-        "form": form, "requests": mine, "approved_hours": approved_hours, "year": year,
+        "form": form, "page": mine, "requests": mine.object_list, "approved_hours": approved_hours, "year": year,
         "max_hours": settings.OT_MAX_HOURS_PER_DAY,
     })
 

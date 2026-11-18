@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -34,7 +35,8 @@ def inbox(request):
     tickets = SupportRequest.objects.select_related("requester")
     if status in SupportRequest.Status.values:
         tickets = tickets.filter(status=status)
-    return render(request, "support/inbox.html", {"tickets": tickets, "statuses": SupportRequest.Status.choices, "selected_status": status})
+    page = Paginator(tickets, 15).get_page(request.GET.get("page"))
+    return render(request, "support/inbox.html", {"page": page, "extra": f"&status={status}" if status in SupportRequest.Status.values else "", "tickets": page.object_list, "statuses": SupportRequest.Status.choices, "selected_status": status})
 
 
 @login_required

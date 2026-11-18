@@ -28,9 +28,11 @@
   {% endif %}
   {% endwith %}
   <section class="comments" id="comments-{{ post.pk }}" aria-label="Comments">
-    <h3>Comments <span class="muted small">({{ post.comments.all|length }})</span></h3>
+    <details class="comments-toggle">
+    <summary><span class="when-closed">See all comments</span><span class="when-open">Hide comments</span> <span class="muted small">({{ post.comments.all|length }})</span></summary>
     {% for comment in post.comments.all %}<div class="comment"><div><strong>{% if comment.author %}{{ comment.author.full_name }}{% else %}Former employee{% endif %}</strong> <time class="muted small">{{ comment.created_at|date:"d M Y, H:i" }}</time><div class="comment-body">{{ comment.body|linebreaksbr }}</div></div>
     {% if user.is_authenticated %}{% if user.is_admin or user.pk == comment.author_id or post.can_moderate_comments %}<form method="post" action="{% url 'newsletter:comment_delete' comment.pk %}">{% csrf_token %}<button type="submit" class="btn btn-sm">Delete</button></form>{% endif %}{% endif %}</div>{% empty %}<p class="muted small">No comments yet.</p>{% endfor %}
     {% if user.is_authenticated %}<form method="post" action="{% url 'newsletter:comment_create' post.pk %}" class="comment-form">{% csrf_token %}<label for="comment-{{ post.pk }}">Add a comment</label><textarea id="comment-{{ post.pk }}" name="body" maxlength="1000" rows="2" required placeholder="Share your thoughts"></textarea><button type="submit" class="btn btn-primary btn-sm">Comment</button></form>{% else %}<p class="muted small"><a href="{% url 'accounts:login' %}?next={{ post.get_absolute_url|urlencode }}">Sign in</a> to comment.</p>{% endif %}
+    </details>
   </section>
 </article>

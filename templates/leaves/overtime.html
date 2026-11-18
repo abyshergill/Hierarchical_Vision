@@ -42,6 +42,7 @@
       </tr>{% endfor %}
     </tbody>
   </table></div>
+  {% include "partials/_pager.html" %}
   {% else %}<p class="muted">You have not requested any overtime yet.</p>{% endif %}
 </section>
 {% endblock %}

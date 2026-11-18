@@ -258,3 +258,19 @@ class GroupTests(TestCase):
         self.assertNotIn("\u202e", post.title)
         page = self.client.get(self.group.get_absolute_url()).content.decode()
         self.assertNotIn("<script>alert(1)</script>", page)
+
+
+class SidebarLimitTests(TestCase):
+    def test_sidebar_lists_my_groups_first_and_hides_extras(self):
+        from django.urls import reverse
+        from accounts.models import User
+        user = User.objects.create_user(employee_id="SB1", password="pw-12345-xx", full_name="Side Bar", email="sb1@example.com")
+        for i in range(7):
+            NewsGroup.objects.create(name=f"A group {i}")
+        mine = NewsGroup.objects.create(name="Zeta mine")
+        GroupMembership.objects.create(group=mine, user=user)
+        self.client.force_login(user)
+        html = self.client.get(reverse("newsletter:list")).content.decode()
+        self.assertLess(html.index("Zeta mine"), html.index("A group 0"))
+        self.assertIn("Show all groups (8)", html)
+        self.assertEqual(html.count('class="extra" hidden'), 3)

@@ -177,7 +177,9 @@ def group_list(request):
     states = services.group_states(request.user, groups)
     for g in groups:
         g.state = states.get(g.pk)
-    return render(request, "newsletter/group_list.html", {"groups": groups})
+    groups.sort(key=lambda g: g.state not in ("manager", "member"))      # groups you belong to come first
+    page = Paginator(groups, 10).get_page(request.GET.get("page"))
+    return render(request, "newsletter/group_list.html", {"page": page, "groups": page.object_list})
 
 
 @login_required

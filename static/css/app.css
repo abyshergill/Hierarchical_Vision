@@ -300,3 +300,11 @@ th{white-space:nowrap} td.actions{white-space:nowrap}
 /* ---------- newsletter sidebar: wider on big screens ---------- */
 @media(min-width:1280px){.container.wide:has(.news-layout){max-width:1400px}.news-layout{grid-template-columns:minmax(0,1fr) 380px;gap:28px}}
 @media(min-width:1600px){.container.wide:has(.news-layout){max-width:1560px}.news-layout{grid-template-columns:minmax(0,1fr) 440px;gap:32px}}
+
+/* collapsible comments + sidebar "show all" */
+.comments-toggle>summary{cursor:pointer;font-weight:600;list-style:none;padding:4px 0}
+.comments-toggle>summary::-webkit-details-marker{display:none}
+.comments-toggle .when-open,.comments-toggle[open] .when-closed{display:none}
+.comments-toggle[open] .when-open{display:inline}
+.side-toggle{background:none;border:0;color:var(--blue);cursor:pointer;padding:4px 6px;font:inherit;text-decoration:underline}
+.side-list li[hidden]{display:none}

@@ -430,4 +430,24 @@
   });
   var desc = document.getElementById("id_description"), count = document.getElementById("desc-count");
   if (desc && count) { var upd = function () { count.textContent = desc.value.length; }; desc.addEventListener("input", upd); upd(); }
+
+  /* sidebar: show 5, "Show all" / "Show less" for the rest */
+  document.querySelectorAll("[data-toggle-list]").forEach(function (btn) {
+    var list = btn.previousElementSibling;
+    if (!list) return;
+    btn.addEventListener("click", function () {
+      var open = btn.getAttribute("aria-expanded") !== "true";
+      list.querySelectorAll("li.extra").forEach(function (li) { li.hidden = !open; });
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.textContent = open ? btn.getAttribute("data-less") : btn.getAttribute("data-more");
+    });
+  });
+
+  /* comments are collapsed; open the one linked by #comments-<id> (e.g. after posting a comment) */
+  function openLinkedComments() {
+    var el = document.getElementById((location.hash || "").slice(1));
+    var d = el && el.querySelector ? el.querySelector("details.comments-toggle") : null;
+    if (d) d.open = true;
+  }
+  openLinkedComments(); window.addEventListener("hashchange", openLinkedComments);
 })();

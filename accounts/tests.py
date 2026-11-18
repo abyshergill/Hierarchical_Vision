@@ -169,8 +169,8 @@ class HomePageTests(BaseCase):
     def test_theme_controls_present(self):
         self.client.force_login(self.emp)
         resp = self.client.get(reverse("accounts:home"))
-        self.assertContains(resp, 'id="theme-cycle"')
-        self.assertContains(resp, 'data-theme-set="dark"')
+        self.assertNotContains(resp, 'id="theme-cycle"')       # no theme button in the top nav
+        self.assertContains(resp, 'data-theme-set="dark"')      # still available in the profile menu
         self.assertContains(resp, "js/theme.js")
 
     def test_admin_menu_only_for_admin(self):

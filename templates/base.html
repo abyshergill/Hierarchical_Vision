@@ -43,7 +43,6 @@
   {% endwith %}
   {% if user.is_authenticated %}
   <div class="topbar-right">
-    <button type="button" class="icon-btn" id="theme-cycle" title="Theme" aria-label="Theme">&#9680;</button>
     <a class="icon-btn" href="{% url 'notifications:list' %}" title="Notifications" aria-label="Notifications">&#128276;{% if unread_count %}<span class="badge-count">{{ unread_count }}</span>{% endif %}</a>
     <details class="menu">
       <summary class="user-chip">{% include "partials/_avatar.html" with person=user size="sm" %}<span class="name">{{ user.full_name }}</span></summary>
@@ -63,7 +62,7 @@
     </details>
   </div>
   {% else %}
-  <div class="topbar-right"><button type="button" class="icon-btn" id="theme-cycle" title="Theme" aria-label="Theme">&#9680;</button><a class="btn btn-sm" href="{% url 'accounts:login' %}">Sign in</a></div>
+  <div class="topbar-right"><a class="btn btn-sm" href="{% url 'accounts:login' %}">Sign in</a></div>
   {% endif %}
 </header>
 
