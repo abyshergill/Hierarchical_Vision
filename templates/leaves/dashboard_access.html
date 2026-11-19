@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Dashboard access{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <p class="eyebrow"><a href="{% url 'leaves:dashboard' %}">&lsaquo; Leave &amp; OT dashboard</a></p>
+  <h1>Who can see the dashboard</h1>
+  <p class="muted">Admins always see the whole company. Choose which managers may open the leave &amp; OT dashboard too:
+    <strong>Own team</strong> shows only the people below them in the org chart, <strong>Whole company</strong> shows everyone.
+    {{ granted }} of {{ managers|length }} managers have access.</p>
+  <form method="post">{% csrf_token %}
+    <input type="search" placeholder="Filter by name, ID or position" data-filter-list="access-list" aria-label="Filter managers" style="max-width:320px">
+    <div class="pick-list access-list" id="access-list" style="margin:12px 0 16px;max-height:480px">
+      {% for m in managers %}
+        <label class="pick-item access-item">
+          <span>{{ m.full_name }} <span class="meta">· {{ m.employee_id }}{% if m.position %} · {{ m.position }}{% endif %}</span></span>
+          <select name="access_{{ m.pk }}" aria-label="Dashboard access for {{ m.full_name }}">
+            {% for value, label in choices %}<option value="{{ value }}" {% if m.leave_dashboard == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </label>
+      {% empty %}<p class="muted">There are no managers yet.</p>{% endfor %}
+    </div>
+    <button class="btn btn-primary" type="submit">Save access</button>
+  </form>
+</section>
+{% endblock %}

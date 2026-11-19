@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
@@ -130,33 +131,65 @@ def holiday_delete(request, pk):
 
 
 # ----------------------------------------------------------------- manager
+TEAM_PENDING_PER_PAGE = 20
+TEAM_MEMBERS_PER_PAGE = 25
+
+
+def _paginate(request, items, per_page, param, anchor=""):
+    """Paginate ``items`` using its own query parameter, so several lists on one page page independently.
+
+    Adds ``prev_url`` / ``next_url`` to the page; every other query parameter (the other lists' pages, the search)
+    is kept in those links."""
+    page = Paginator(items, per_page).get_page(request.GET.get(param))
+
+    def url(number):
+        params = request.GET.copy()
+        params[param] = number
+        return f"?{params.urlencode()}{anchor}"
+
+    page.prev_url = url(page.previous_page_number()) if page.has_previous() else ""
+    page.next_url = url(page.next_page_number()) if page.has_next() else ""
+    return page
+
+
 @login_required
 def team(request):
     if not request.user.can_approve_leaves:
         raise PermissionDenied
     year = timezone.localdate().year
-    members = list(services.team_members(request.user))
-    pending = (
-        LeaveApplication.objects.filter(applicant__in=members, status=Status.PENDING)
-        
-        .select_related("applicant", "leave_type", "alternate_employee").prefetch_related("days").order_by("start_date")
-    )
-    pending = [a for a in pending if request.user.can_review(a.applicant)]
+    members = services.team_members(request.user)
+    member_ids = members.values("pk")
+    pending = [
+        a for a in LeaveApplication.objects.filter(applicant__in=member_ids, status=Status.PENDING)
+        .select_related("applicant", "leave_type", "alternate_employee").prefetch_related("days").order_by("start_date", "pk")
+        if request.user.can_review(a.applicant)
+    ]
     pending_ot = [
-        o for o in OvertimeRequest.objects.filter(applicant__in=members, status=Status.PENDING)
-        .select_related("applicant").order_by("date", "start_time")
+        o for o in OvertimeRequest.objects.filter(applicant__in=member_ids, status=Status.PENDING)
+        .select_related("applicant").order_by("date", "start_time", "pk")
         if request.user.can_review(o.applicant)
     ]
     upcoming = (
-        LeaveApplication.objects.filter(applicant__in=members, status=Status.APPROVED, end_date__gte=timezone.localdate())
+        LeaveApplication.objects.filter(applicant__in=member_ids, status=Status.APPROVED, end_date__gte=timezone.localdate())
         .select_related("applicant", "leave_type", "alternate_employee").order_by("start_date")[:30]
     )
-    balances = services.get_balances_for_users(members, year)
+    q = request.GET.get("q", "").strip()[:100]
+    if q:
+        members = members.filter(Q(full_name__icontains=q) | Q(employee_id__icontains=q) | Q(position__icontains=q))
+    pending_page = _paginate(request, pending, TEAM_PENDING_PER_PAGE, "lp", "#pending")
+    ot_page = _paginate(request, pending_ot, TEAM_PENDING_PER_PAGE, "op", "#overtime")
+    member_page = _paginate(request, members, TEAM_MEMBERS_PER_PAGE, "tp", "#balances")
+    page_members = list(member_page.object_list)
+    balances = services.get_balances_for_users(page_members, year)   # only the people on this page
     return render(request, "leaves/team.html", {
         "pending": pending,
+        "pending_page": pending_page,
         "pending_ot": pending_ot,
+        "ot_page": ot_page,
         "upcoming": upcoming,
-        "team_rows": [(m, balances[m.pk]) for m in members],
+        "member_page": member_page,
+        "team_rows": [(m, balances[m.pk]) for m in page_members],
+        "q": q,
         "leave_types": LeaveType.objects.filter(is_active=True),
         "holidays": Holiday.objects.filter(date__gte=timezone.localdate()).order_by("date")[:10],
         "year": year,
@@ -200,8 +233,9 @@ MAX_BULK_ITEMS = 1000
 
 def _bulk_ids(request):
     """Ids of the rows the reviewer saw on the page (so nothing submitted after page load is approved blindly)."""
+    field = "page_ids" if request.POST.get("scope") == "page" else "ids"
     ids = []
-    for raw in request.POST.getlist("ids")[:MAX_BULK_ITEMS]:
+    for raw in request.POST.getlist(field)[:MAX_BULK_ITEMS]:
         try:
             ids.append(int(raw))
         except (TypeError, ValueError):

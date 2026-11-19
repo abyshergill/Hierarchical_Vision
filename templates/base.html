@@ -24,10 +24,14 @@
     <a href="{% url 'leaves:holidays' %}" class="{% if view == 'leaves:holidays' %}active{% endif %}">Holidays</a>
     <a href="{% url 'support:create' %}" class="{% if view == 'support:create' %}active{% endif %}">IT support</a>
     {% if user.can_approve_leaves %}<a href="{% url 'leaves:team' %}" class="{% if view == 'leaves:team' %}active{% endif %}">Team leaves</a>{% endif %}
+    {% if user.can_view_leave_dashboard and not user.is_admin %}<a href="{% url 'leaves:dashboard' %}" class="{% if view == 'leaves:dashboard' %}active{% endif %}">Dashboard</a>{% endif %}
     {% if user.is_admin %}
     <details class="menu">
       <summary>Admin</summary>
       <div class="menu-panel">
+        <a href="{% url 'leaves:dashboard' %}">Leave &amp; OT dashboard</a>
+        <a href="{% url 'leaves:dashboard_access' %}">Dashboard access</a>
+        <hr>
         <a href="{% url 'accounts:user_list' %}">People</a>
         <a href="{% url 'leaves:type_list' %}">Standard leaves &amp; daily limit</a>
         <a href="{% url 'notifications:broadcast' %}">Send notification</a>

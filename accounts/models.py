@@ -20,6 +20,14 @@ class Role(models.TextChoices):
     EMPLOYEE = "employee", "Employee"
 
 
+class DashboardAccess(models.TextChoices):
+    """How much of the leave & OT dashboard a Manager may see (Admins always see everything)."""
+
+    NONE = "", "No access"
+    TEAM = "team", "Own team"
+    ALL = "all", "Whole company"
+
+
 employee_id_validator = RegexValidator(
     r"^[A-Za-z0-9][A-Za-z0-9_-]{1,29}$",
     "Employee ID may contain only letters, digits, '-' and '_' (2-30 characters).",
@@ -101,6 +109,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text="Lets this employee/manager post in the company newsletter (Admins can always post).",
     )
 
+    leave_dashboard = models.CharField(
+        "leave & OT dashboard access", max_length=5, choices=DashboardAccess.choices, default=DashboardAccess.NONE,
+        blank=True, help_text="Managers only: lets this manager open the daily leave & OT dashboard (set by Admins).",
+    )
+
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False, editable=False)
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -146,6 +159,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def can_approve_leaves(self):
         return self.role in (Role.ADMIN, Role.MANAGER)
+
+    @property
+    def can_view_leave_dashboard(self):
+        return self.is_admin or (self.is_manager_role and self.leave_dashboard in (DashboardAccess.TEAM, DashboardAccess.ALL))
+
+    @property
+    def leave_dashboard_scope(self):
+        """'all' (whole company) or 'team' (everyone below this user). Only meaningful if can_view_leave_dashboard."""
+        return "all" if self.is_admin or self.leave_dashboard == DashboardAccess.ALL else "team"
 
     @property
     def can_publish_newsletter(self):

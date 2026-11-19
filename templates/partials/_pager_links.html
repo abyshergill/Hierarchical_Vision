@@ -1,0 +1,5 @@
+{# Pager for pages built by leaves.views._paginate (keeps the other lists' page numbers in the links). #}
+{% if page.has_other_pages %}<nav class="pager" aria-label="{{ label|default:'Pagination' }}">
+  {% if page.has_previous %}<a href="{{ page.prev_url }}">&lsaquo; Prev</a>{% endif %}
+  <span>Page {{ page.number }} / {{ page.paginator.num_pages }} <span class="muted small">· {{ page.start_index }}–{{ page.end_index }} of {{ page.paginator.count }}</span></span>
+  {% if page.has_next %}<a href="{{ page.next_url }}">Next &rsaquo;</a>{% endif %}</nav>{% endif %}

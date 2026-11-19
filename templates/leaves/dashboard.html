@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Leave & OT dashboard{% endblock %}
+{% block content %}
+<div class="dash">
+
+<header class="dash-head">
+  <div>
+    <h1>Leave &amp; OT dashboard</h1>
+    <p class="dash-sub">{{ day|date:"l, d F Y" }} · {% if scope == "all" %}Whole company{% else %}Your team{% endif %}{% if team_lead %} · team of {{ team_lead.full_name }}{% endif %} · {{ headcount }} people
+      {% if day == today %}<span class="chip chip-green">Today</span>{% endif %}
+      {% if holiday %}<span class="chip chip-violet">Holiday · {{ holiday.name }}</span>{% elif day.weekday >= 5 %}<span class="chip">Weekend</span>{% endif %}
+      {% if include_pending %}<span class="chip chip-amber">Incl. pending</span>{% endif %}</p>
+  </div>
+  <div class="dash-actions">
+    {% if user.can_approve_leaves %}<a class="pill-btn" href="{% url 'leaves:team' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg> Review requests</a>{% endif %}
+    {% if user.is_admin %}<a class="pill-btn" href="{% url 'leaves:dashboard_access' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg> Manager access</a>{% endif %}
+  </div>
+</header>
+
+<form method="get" class="card dash-filters" role="search">
+  <div class="day-nav">
+    <a class="btn btn-sm" href="?date={{ prev_day|date:'Y-m-d' }}{% if keep %}&amp;{{ keep }}{% endif %}" aria-label="Previous day">&lsaquo;</a>
+    <input type="date" name="date" value="{{ day|date:'Y-m-d' }}" aria-label="Day" data-autosubmit>
+    <a class="btn btn-sm" href="?date={{ next_day|date:'Y-m-d' }}{% if keep %}&amp;{{ keep }}{% endif %}" aria-label="Next day">&rsaquo;</a>
+    {% if day != today %}<a class="btn btn-sm" href="?date={{ today|date:'Y-m-d' }}{% if keep %}&amp;{{ keep }}{% endif %}">Today</a>{% endif %}
+  </div>
+  <label class="dash-field">Team
+    <select name="team" data-autosubmit>
+      <option value="">{% if scope == "all" %}Everyone{% else %}All my team{% endif %}</option>
+      {% for m in managers %}<option value="{{ m.pk }}" {% if team_lead.pk == m.pk %}selected{% endif %}>{{ m.full_name }} ({{ m.employee_id }})</option>{% endfor %}
+    </select>
+  </label>
+  <label class="dash-check"><input type="checkbox" name="pending" value="1" {% if include_pending %}checked{% endif %} data-autosubmit> Include pending requests</label>
+  {% if tab == "ot" %}<input type="hidden" name="tab" value="ot">{% endif %}
+  <button class="btn btn-sm" type="submit">Apply</button>
+</form>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <span class="ico ico-blue"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
+    <div><p>On leave</p><h3>{{ on_leave }}</h3><span class="sub">{{ out_pct }}% of the team</span></div>
+  </div>
+  <div class="stat-card">
+    <span class="ico ico-violet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+    <div><p>Leave hours</p><h3>{{ leave_hours|floatformat:"-2" }}<small>h</small></h3><span class="sub">approved</span></div>
+  </div>
+  <div class="stat-card">
+    <span class="ico ico-amber"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span>
+    <div><p>On overtime</p><h3>{{ ot_people }}</h3><span class="sub">working extra today</span></div>
+  </div>
+  <div class="stat-card">
+    <span class="ico ico-green"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg></span>
+    <div><p>Overtime hours</p><h3>{{ ot_hours|floatformat:"-2" }}<small>h</small></h3><span class="sub">approved</span></div>
+  </div>
+</div>
+
+<div class="dash-row dash-row-main">
+  <section class="card">
+    <div class="card-head"><div><h2>{{ month_name }}</h2><p class="muted small">People per day</p></div>
+      <span class="legend small"><i class="sw sw-leave"></i> On leave <i class="sw sw-ot"></i> On overtime</span></div>
+    <div class="chart-box" id="chart-month" role="img" aria-label="Bar chart of people on leave and on overtime for each day of {{ month_name }}"></div>
+    <details class="chart-table"><summary>View as table</summary>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th class="num">On leave</th><th class="num">On overtime</th></tr></thead>
+        <tbody>{% for m in month %}<tr{% if m.date == day %} class="row-current"{% endif %}><td><a href="?{% if keep %}{{ keep }}&amp;{% endif %}date={{ m.date|date:'Y-m-d' }}">{{ m.date|date:"D d M" }}</a>{% if m.holiday %} <span class="muted small">· {{ m.holiday }}</span>{% endif %}</td><td class="num">{{ m.leave }}</td><td class="num">{{ m.ot }}</td></tr>{% endfor %}</tbody></table></div>
+    </details>
+  </section>
+
+  <aside class="promo">
+    <p class="promo-eyebrow">Needs attention</p>
+    {% with waiting=pending_leave_people|add:ot_pending %}
+    {% if waiting %}
+      <div class="promo-num">{{ waiting }}</div>
+      <p class="promo-text">request{{ waiting|pluralize }} waiting for approval on this day.</p>
+      <ul>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg> {{ pending_leave_people }} leave {% if pending_leave_people == 1 %}request{% else %}requests{% endif %}</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg> {{ ot_pending }} overtime {% if ot_pending == 1 %}request{% else %}requests{% endif %}</li>
+      </ul>
+      {% if user.can_approve_leaves %}<a class="promo-btn" href="{% url 'leaves:team' %}">Review now &rarr;</a>{% endif %}
+    {% else %}
+      <div class="promo-num">0</div>
+      <p class="promo-text">Nothing is waiting for approval on this day. You are all caught up.</p>
+    {% endif %}
+    {% endwith %}
+  </aside>
+</div>
+
+<div class="dash-row dash-row-three">
+  <section class="card dcard">
+    <h2>Leave by type</h2>
+    {% if by_type %}<div class="chart-box donut-box" id="chart-types" role="img" aria-label="Donut chart of leave by type"></div><ul class="legend-list" id="legend-types"></ul>
+    {% else %}<p class="muted empty">No one is on leave this day.</p>{% endif %}
+  </section>
+  <section class="card dcard">
+    <h2>Leave by team</h2>
+    {% if leave_by_team %}<div class="chart-box donut-box" id="chart-leave-teams" role="img" aria-label="Donut chart of people on leave by team"></div><ul class="legend-list" id="legend-leave-teams"></ul>
+    {% else %}<p class="muted empty">No one is on leave this day.</p>{% endif %}
+  </section>
+  <section class="card dcard">
+    <h2>Overtime by team <span class="muted small">hours</span></h2>
+    {% if ot_by_team %}<div class="chart-box donut-box" id="chart-ot-teams" role="img" aria-label="Donut chart of overtime hours by team"></div><ul class="legend-list" id="legend-ot-teams"></ul>
+    {% else %}<p class="muted empty">No overtime this day.</p>{% endif %}
+  </section>
+</div>
+
+<section class="card no-pad dash-table" id="people">
+  <div class="card-head table-head">
+    <div><h2>People out on {{ day|date:"d M" }}</h2></div>
+    <div class="table-tools">
+      <nav class="filter-tabs" aria-label="Who is out">
+        <a class="tab-leave" href="{{ tab_base }}tab=leave#people" {% if tab == "leave" %}aria-current="page"{% endif %}>On leave · {{ leave_page.paginator.count }}</a>
+        <a class="tab-ot" href="{{ tab_base }}tab=ot#people" {% if tab == "ot" %}aria-current="page"{% endif %}>On overtime · {{ ot_page.paginator.count }}</a>
+      </nav>
+      <a class="pill-btn pill-btn-solid" href="{% url 'leaves:dashboard_export' %}?{{ export_query }}" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg> Download CSV</a>
+    </div>
+  </div>
+  {% if tab == "leave" %}
+    {% if leave_page.object_list %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Employee</th><th>Team</th><th>Leave type</th><th>Time</th><th class="num">Hours</th><th>Status</th><th>Covered by</th></tr></thead>
+      <tbody>{% for d in leave_page %}{% with app=d.application %}
+        <tr>
+          <td><div class="person"><span class="avatar-sm av{{ app.applicant_id|stringformat:'d'|slice:'-1:' }}">{{ app.applicant.initials }}</span>
+            <div><a href="{{ app.applicant.get_absolute_url }}">{{ app.applicant.full_name }}</a><div class="muted small">{{ app.applicant.employee_id }}{% if app.applicant.position %} · {{ app.applicant.position }}{% endif %}</div></div></div></td>
+          <td>{{ app.applicant.manager.full_name|default:"—" }}</td>
+          <td>{{ app.leave_type.name }}</td>
+          <td class="nowrap">{{ d.start_time|time:"H:i" }}–{{ d.end_time|time:"H:i" }}</td>
+          <td class="num">{{ d.hours|floatformat:"-2" }}</td>
+          <td><span class="pill pill-{{ app.status }}">{{ app.get_status_display }}</span></td>
+          <td>{{ app.alternate_employee.full_name|default:"—" }}</td>
+        </tr>{% endwith %}{% endfor %}
+      </tbody>
+    </table></div>
+    <div class="table-foot">{% include "partials/_pager_links.html" with page=leave_page label="Leave list pages" %}</div>
+    {% else %}<p class="muted empty">No one is on leave this day.</p>{% endif %}
+  {% else %}
+    {% if ot_page.object_list %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Employee</th><th>Team</th><th>Time</th><th class="num">Hours</th><th>Status</th><th>Reason</th></tr></thead>
+      <tbody>{% for o in ot_page %}
+        <tr>
+          <td><div class="person"><span class="avatar-sm av{{ o.applicant_id|stringformat:'d'|slice:'-1:' }}">{{ o.applicant.initials }}</span>
+            <div><a href="{{ o.applicant.get_absolute_url }}">{{ o.applicant.full_name }}</a><div class="muted small">{{ o.applicant.employee_id }}{% if o.applicant.position %} · {{ o.applicant.position }}{% endif %}</div></div></div></td>
+          <td>{{ o.applicant.manager.full_name|default:"—" }}</td>
+          <td class="nowrap">{{ o.start_time|time:"H:i" }}–{{ o.end_time|time:"H:i" }}</td>
+          <td class="num">{{ o.hours|floatformat:"-2" }}</td>
+          <td><span class="pill pill-{{ o.status }}">{{ o.get_status_display }}</span></td>
+          <td>{{ o.reason|truncatechars:80 }}</td>
+        </tr>{% endfor %}
+      </tbody>
+    </table></div>
+    <div class="table-foot">{% include "partials/_pager_links.html" with page=ot_page label="Overtime list pages" %}</div>
+    {% else %}<p class="muted empty">No overtime this day.</p>{% endif %}
+  {% endif %}
+</section>
+
+</div>
+{{ chart_data|json_script:"dash-data" }}
+{% endblock %}
+{% block scripts %}{% load static %}<script src="{% static 'js/dashboard_charts.js' %}"></script>{% endblock %}

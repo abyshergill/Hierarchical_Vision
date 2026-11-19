@@ -271,7 +271,7 @@
   function showCrumbs(chain) {
     crumbs.textContent = '';
     chain.forEach(function (u, i) {
-      if (i) crumbs.appendChild(el('span', null, '\u203A'));
+      if (i) crumbs.appendChild(el('span', null, '›'));
       var item = el('span', 'breadcrumb-item', u.name);
       item.addEventListener('click', function () { focusUser(u.id, false); });
       crumbs.appendChild(item);
@@ -306,7 +306,7 @@
     found = found.slice(0, 60);
     resultsGrid.textContent = '';
     lineageChain.textContent = '';
-    if (!found.length) { resultsGrid.appendChild(el('p', 'empty-chart', 'No employees found for \u201C' + q + '\u201D.')); }
+    if (!found.length) { resultsGrid.appendChild(el('p', 'empty-chart', 'No employees found for “' + q + '”.')); }
     found.forEach(function (u) {
       var c = memberCard(u, { plainName: true });
       c.addEventListener('click', function () { closeSearch(); searchInput.value = ''; focusUser(u.id, true); });

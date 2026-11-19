@@ -193,6 +193,10 @@
       list.querySelectorAll(".pick-item").forEach(function (it) { it.hidden = q && it.textContent.toLowerCase().indexOf(q) === -1; });
     });
   });
+  /* ---------- filters that apply as soon as they change (CSP forbids inline onchange=) ---------- */
+  document.querySelectorAll("[data-autosubmit]").forEach(function (field) {
+    field.addEventListener("change", function () { if (field.form && (field.type !== "date" || field.value)) field.form.submit(); });
+  });
   document.querySelectorAll("[data-pick]").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var list = document.getElementById(btn.dataset.target); if (!list) return;
@@ -230,7 +234,9 @@
   /* ---------- confirm destructive forms (no inline handlers: CSP) ---------- */
   document.addEventListener("submit", function (e) {
     var f = e.target;
-    if (f.classList && f.classList.contains("js-confirm") && !window.confirm(f.dataset.confirm || "Are you sure?")) e.preventDefault();
+    if (!f.classList || !f.classList.contains("js-confirm")) return;
+    var msg = (e.submitter && e.submitter.dataset.confirm) || f.dataset.confirm || "Are you sure?";   // a button may ask its own question
+    if (!window.confirm(msg)) e.preventDefault();
   });
 
   /* ---------- success messages fade out ---------- */

@@ -3,24 +3,27 @@
 {% block content %}
 <h1>Team leaves · {{ year }}</h1>
 
-<section class="card">
+<section class="card" id="pending">
   <div class="row-between bulk-head">
     <h2>Pending approvals ({{ pending|length }})</h2>
     {% if pending|length > 1 %}
     <form method="post" action="{% url 'leaves:review_all' %}" class="js-confirm bulk-form"
-          data-confirm="Approve all {{ pending|length }} pending leave requests listed here?">
+          data-confirm="Approve all {{ pending|length }} pending leave requests (every page)?">
       {% csrf_token %}
-      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <input type="hidden" name="next" value="{{ request.get_full_path }}#pending">
       {% for app in pending %}<input type="hidden" name="ids" value="{{ app.pk }}">{% endfor %}
+      {% if pending_page.has_other_pages %}{% for app in pending_page %}<input type="hidden" name="page_ids" value="{{ app.pk }}">{% endfor %}{% endif %}
       <input type="text" name="comment" maxlength="500" placeholder="Comment for all (optional)" aria-label="Comment for all">
-      <button class="btn btn-green btn-sm" type="submit">&#10003; Approve all ({{ pending|length }})</button>
+      {% if pending_page.has_other_pages %}<button class="btn btn-sm" type="submit" name="scope" value="page"
+              data-confirm="Approve the {{ pending_page.object_list|length }} leave requests on this page?">&#10003; Approve this page ({{ pending_page.object_list|length }})</button>{% endif %}
+      <button class="btn btn-green btn-sm" type="submit" name="scope" value="all">&#10003; Approve all ({{ pending|length }})</button>
     </form>
     {% endif %}
   </div>
   {% if pending %}
   <div class="table-wrap"><table>
     <thead><tr><th>Employee</th><th>Type</th><th>Period</th><th class="num">Duration</th><th>Alternate</th><th>Reason</th><th>Decision</th></tr></thead>
-    <tbody>{% for app in pending %}
+    <tbody>{% for app in pending_page %}
       <tr>
         <td><a href="{{ app.applicant.get_absolute_url }}?tab=leaves">{{ app.applicant.full_name }}</a><div class="muted small">{{ app.applicant.employee_id }}</div></td>
         <td>{{ app.leave_type.name }}{% if app.is_hourly %} <span class="pill pill-soon">partial</span>{% endif %}</td>
@@ -34,6 +37,7 @@
       </tr>{% endfor %}
     </tbody>
   </table></div>
+  {% include "partials/_pager_links.html" with page=pending_page label="Pending leave pages" %}
   {% else %}<p class="muted">Nothing waiting for your review. 🎉</p>{% endif %}
 </section>
 
@@ -42,19 +46,22 @@
     <h2>Pending OT requests ({{ pending_ot|length }})</h2>
     {% if pending_ot|length > 1 %}
     <form method="post" action="{% url 'leaves:overtime_review_all' %}" class="js-confirm bulk-form"
-          data-confirm="Approve all {{ pending_ot|length }} pending overtime requests listed here?">
+          data-confirm="Approve all {{ pending_ot|length }} pending overtime requests (every page)?">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}#overtime">
       {% for o in pending_ot %}<input type="hidden" name="ids" value="{{ o.pk }}">{% endfor %}
+      {% if ot_page.has_other_pages %}{% for o in ot_page %}<input type="hidden" name="page_ids" value="{{ o.pk }}">{% endfor %}{% endif %}
       <input type="text" name="comment" maxlength="500" placeholder="Comment for all (optional)" aria-label="Comment for all">
-      <button class="btn btn-green btn-sm" type="submit">&#10003; Approve all ({{ pending_ot|length }})</button>
+      {% if ot_page.has_other_pages %}<button class="btn btn-sm" type="submit" name="scope" value="page"
+              data-confirm="Approve the {{ ot_page.object_list|length }} overtime requests on this page?">&#10003; Approve this page ({{ ot_page.object_list|length }})</button>{% endif %}
+      <button class="btn btn-green btn-sm" type="submit" name="scope" value="all">&#10003; Approve all ({{ pending_ot|length }})</button>
     </form>
     {% endif %}
   </div>
   {% if pending_ot %}
   <div class="table-wrap"><table>
     <thead><tr><th>Employee</th><th>Date &amp; time</th><th class="num">Hours</th><th>Reason</th><th>Decision</th></tr></thead>
-    <tbody>{% for o in pending_ot %}
+    <tbody>{% for o in ot_page %}
       <tr>
         <td><a href="{{ o.applicant.get_absolute_url }}">{{ o.applicant.full_name }}</a><div class="muted small">{{ o.applicant.employee_id }}</div></td>
         <td>{{ o.period_display }}</td>
@@ -64,11 +71,21 @@
       </tr>{% endfor %}
     </tbody>
   </table></div>
+  {% include "partials/_pager_links.html" with page=ot_page label="Pending overtime pages" %}
   {% else %}<p class="muted">No overtime waiting for approval.</p>{% endif %}
 </section>
 
-<section class="card">
-  <h2>Team balances (remaining days)</h2>
+<section class="card" id="balances">
+  <div class="row-between bulk-head">
+    <h2>Team balances (remaining days) <span class="muted small">· {{ member_page.paginator.count }} {% if q %}found{% else %}people{% endif %}</span></h2>
+    <form method="get" action="#balances" class="bulk-form" role="search">
+      {% if request.GET.lp %}<input type="hidden" name="lp" value="{{ request.GET.lp }}">{% endif %}
+      {% if request.GET.op %}<input type="hidden" name="op" value="{{ request.GET.op }}">{% endif %}
+      <input type="search" name="q" value="{{ q }}" maxlength="100" placeholder="Filter by name, ID or position" aria-label="Filter team">
+      <button class="btn btn-sm" type="submit">Filter</button>
+      {% if q %}<a class="btn btn-sm" href="?{% if request.GET.lp %}lp={{ request.GET.lp|urlencode }}&amp;{% endif %}{% if request.GET.op %}op={{ request.GET.op|urlencode }}{% endif %}#balances">Clear</a>{% endif %}
+    </form>
+  </div>
   {% if team_rows %}
   <div class="table-wrap"><table>
     <thead><tr><th>Employee</th>{% for lt in leave_types %}<th class="num">{{ lt.name }}</th>{% endfor %}<th>Export</th></tr></thead>
@@ -80,6 +97,8 @@
       </tr>{% endfor %}
     </tbody>
   </table></div>
+  {% include "partials/_pager_links.html" with page=member_page label="Team pages" %}
+  {% elif q %}<p class="muted">No one in your team matches “{{ q }}”.</p>
   {% else %}<p class="muted">No one reports to you yet.</p>{% endif %}
 </section>
 

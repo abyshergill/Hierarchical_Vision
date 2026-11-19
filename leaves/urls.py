@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import dashboard, views
 
 app_name = "leaves"
 
@@ -15,6 +15,9 @@ urlpatterns = [
     path("overtime/<int:pk>/review/", views.overtime_review, name="overtime_review"),
     path("overtime/review-all/", views.overtime_review_all, name="overtime_review_all"),
     path("team/", views.team, name="team"),
+    path("dashboard/", dashboard.dashboard, name="dashboard"),
+    path("dashboard/export.csv", dashboard.dashboard_export, name="dashboard_export"),
+    path("dashboard/access/", dashboard.dashboard_access, name="dashboard_access"),
     path("holidays/", views.holidays, name="holidays"),
     path("holidays/download.pdf", views.holidays_pdf, name="holidays_pdf"),
     path("holidays/<int:pk>/delete/", views.holiday_delete, name="holiday_delete"),
